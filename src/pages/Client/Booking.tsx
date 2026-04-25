@@ -44,7 +44,7 @@ export function ClientBooking() {
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'agendamentos' 
+        table: 'appointments' 
       }, (payload) => {
         console.log("Database change detected, refreshing slots...", payload);
         if (selectedDate && selectedService) {
@@ -149,7 +149,7 @@ export function ClientBooking() {
       const endRange = endOfDay(date).toISOString();
       
       const { data: booked, error } = await supabase
-        .from("agendamentos")
+        .from("appointments")
         .select("start_time, end_time")
         .in("status", ["pending", "confirmed"])
         .gte("start_time", startRange)
@@ -194,7 +194,7 @@ export function ClientBooking() {
       const endRange = endOfDay(selectedDate!).toISOString();
 
       const { data: currentBooked, error: fetchError } = await supabase
-        .from("agendamentos")
+        .from("appointments")
         .select("start_time, end_time")
         .in("status", ["pending", "confirmed"])
         .gte("start_time", startRange)
@@ -216,7 +216,7 @@ export function ClientBooking() {
         return;
       }
 
-      const { error } = await supabase.from("agendamentos").insert({
+      const { error } = await supabase.from("appointments").insert({
         client_id: profile.id,
         service_id: selectedService.id,
         start_time: selectedSlot.toISOString(),
