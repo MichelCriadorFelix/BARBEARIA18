@@ -129,18 +129,22 @@ create policy "Admin transactions" on transactions for all to authenticated usin
 -- 2. Nome do bucket: "documentsbarbearia"
 -- 3. Marque a opção "Public bucket" (importante para que todos vejam a imagem).
 -- 4. Clique em "Save".
--- 5. Adicione as políticas abaixo no botão "Add policy" do bucket documentsbarbearia:
+-- 5. Vá em "Policies" no menu lateral do Storage.
+-- 6. No bucket "documentsbarbearia", adicione estas políticas via SQL Editor (mais fácil):
 
--- [POLÍTICA 1] Permitir leitura pública:
--- Select bucket "documentsbarbearia" -> "New Policy" -> "Get started quickly" -> "Public access to all" -> "Save".
+/*
+-- COLE ISTO NO SQL EDITOR DO SUPABASE PARA LIBERAR O UPLOAD:
 
--- [POLÍTICA 2] Permitir upload apenas para Admin:
--- Select bucket "documentsbarbearia" -> "New Policy" -> "Create a policy from scratch"
--- Name: "Admins can manage documents"
--- Allowed operations: INSERT, UPDATE, DELETE
--- Target roles: authenticated
--- Policy definition:
--- auth.uid() in (select id from profiles where role = 'admin')
+CREATE POLICY "Acesso Publico Leitura" ON storage.objects FOR SELECT TO public USING ( bucket_id = 'documentsbarbearia' );
+
+CREATE POLICY "Admin Gerenciar Tudo" ON storage.objects FOR ALL TO authenticated USING (
+  bucket_id = 'documentsbarbearia' AND
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+) WITH CHECK (
+  bucket_id = 'documentsbarbearia' AND
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+);
+*/
 ```
 
 ## 4. Insira do Administrador (Eduardo Gomes)
