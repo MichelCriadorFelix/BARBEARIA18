@@ -87,9 +87,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error && error.code !== "PGRST116") {
         console.error("Error fetching profile", error);
       }
+      
+      // Attempt to auto-repair missing profiles
+      if (error?.code === "PGRST116") {
+        console.warn("Profile missing. Attempting to recreate...");
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+           const email = userData.user.email;
+           const newName = userData.user.user_metadata?.full_name || userData.user.user_metadata?.name || email?.split('@')[0] || "Usuário";
+           const { data: newProfile, error: insertErr } = await supabase
+              .from("profiles")
+              .insert([{ id: userId, role: "client", full_name: newName }])
+              .select().single();
+              
+           if (!insertErr && newProfile) {
+             setProfile(newProfile as Profile);
+             return;
+           }
+        }
+      }
+      
       if (data) setProfile(data as Profile);
     } catch (error) {
-      console.error(error);
+      console.error("Fatal error fetching profile:", error);
     }
   };
 
