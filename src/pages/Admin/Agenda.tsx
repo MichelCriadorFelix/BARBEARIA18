@@ -2,13 +2,18 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { format, startOfDay, endOfDay, addDays, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle2, ChevronLeft, ChevronRight, Clock, User, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Clock, User, XCircle, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function AdminAgenda() {
   const [date, setDate] = useState(new Date());
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // States for finishing an appointment
+  const [completingApt, setCompletingApt] = useState<any>(null);
+  const [paymentMethod, setPaymentMethod] = useState("pix");
+  const [amountReceived, setAmountReceived] = useState("");
 
   useEffect(() => {
     fetchAgenda();
@@ -34,13 +39,18 @@ export function AdminAgenda() {
     setLoading(false);
   }
 
-  async function updateStatus(id: string, status: string, servicePrice?: number, serviceName?: string) {
+  async function updateStatus(id: string, status: string, servicePrice?: number, serviceName?: string, payment?: { method: string, changeDetails: string }) {
     if (status === 'completed' && servicePrice) {
+      let desc = `Corte Finalizado: ${serviceName}`;
+      if (payment) {
+        desc += ` | Pagamento: ${payment.method} ${payment.changeDetails}`;
+      }
+      
       // Auto-faturamento no CRM
       await supabase.from("transactions").insert({
         type: 'income',
         amount: servicePrice,
-        description: `Corte Finalizado: ${serviceName}`,
+        description: desc,
         appointment_id: id,
         date: format(new Date(), 'yyyy-MM-dd')
       });
@@ -48,6 +58,39 @@ export function AdminAgenda() {
 
     await supabase.from("appointments").update({ status }).eq("id", id);
     fetchAgenda();
+  }
+
+  async function confirmCompletion(e: React.FormEvent) {
+    e.preventDefault();
+    if (!completingApt) return;
+
+    let changeDetails = "";
+    if (paymentMethod === "dinheiro" && amountReceived) {
+      const received = parseFloat(amountReceived);
+      const price = completingApt.services?.price || 0;
+      if (received > price) {
+        changeDetails = `(Troco: R$ ${(received - price).toFixed(2)})`;
+      }
+    }
+
+    const methodLabels: any = {
+      pix: "PIX",
+      credito: "Cartão de Crédito",
+      debito: "Cartão de Débito",
+      dinheiro: "Dinheiro"
+    };
+
+    await updateStatus(
+      completingApt.id, 
+      'completed', 
+      completingApt.services?.price, 
+      `${completingApt.services?.name} - ${completingApt.profiles?.full_name}`,
+      { method: methodLabels[paymentMethod], changeDetails }
+    );
+
+    setCompletingApt(null);
+    setPaymentMethod("pix");
+    setAmountReceived("");
   }
 
   return (
@@ -99,7 +142,7 @@ export function AdminAgenda() {
                     {apt.profiles?.full_name}
                   </h3>
                   <div className="text-white/40 text-sm mt-1">
-                    {apt.services?.name} • R$ {apt.services?.price.toFixed(2)}
+                    {apt.services?.name} • R$ {apt.services?.price?.toFixed(2)}
                   </div>
                   {apt.profiles?.phone && (
                     <div className="text-white/40 text-xs mt-1">WhatsApp: {apt.profiles.phone}</div>
@@ -133,7 +176,7 @@ export function AdminAgenda() {
                       <XCircle className="w-4 h-4" /> Cancelar
                     </button>
                     <button
-                      onClick={() => updateStatus(apt.id, 'completed', apt.services?.price, apt.services?.name)}
+                      onClick={() => setCompletingApt(apt)}
                       className="flex-1 md:flex-none px-4 py-2 bg-green-500 text-green-950 hover:bg-green-600 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2"
                     >
                       <CheckCircle2 className="w-4 h-4" /> Finalizar
@@ -150,6 +193,75 @@ export function AdminAgenda() {
           ))
         )}
       </div>
+
+      {completingApt && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center gap-3 mb-4 text-white">
+              <DollarSign className="text-green-500" />
+              <h2 className="text-xl font-bold">Finalizar Corte</h2>
+            </div>
+            
+            <div className="bg-black/40 border border-white/10 rounded-xl p-4 mb-4">
+              <p className="text-white font-medium">{completingApt.profiles?.full_name}</p>
+              <p className="text-white/60 text-sm">{completingApt.services?.name}</p>
+              <p className="text-green-500 font-bold mt-2">Valor: R$ {completingApt.services?.price?.toFixed(2)}</p>
+            </div>
+
+            <form onSubmit={confirmCompletion} className="space-y-4">
+              <div>
+                <label className="block text-sm text-white/40 mb-1">Forma de Pagamento</label>
+                <select
+                  value={paymentMethod}
+                  onChange={e => setPaymentMethod(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 backdrop-blur-md"
+                >
+                  <option value="pix">PIX</option>
+                  <option value="credito">Cartão de Crédito</option>
+                  <option value="debito">Cartão de Débito</option>
+                  <option value="dinheiro">Dinheiro</option>
+                </select>
+              </div>
+
+              {paymentMethod === 'dinheiro' && (
+                <div>
+                  <label className="block text-sm text-white/40 mb-1">Valor Recebido (Para calcular Troco)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min={completingApt.services?.price || 0}
+                    value={amountReceived}
+                    onChange={e => setAmountReceived(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500 backdrop-blur-md"
+                    placeholder={`Ex: ${(completingApt.services?.price + 10)?.toFixed(2)}`}
+                  />
+                  {amountReceived && parseFloat(amountReceived) > (completingApt.services?.price || 0) && (
+                    <p className="text-green-500 text-sm mt-2 font-medium">
+                      Troco: R$ {(parseFloat(amountReceived) - completingApt.services?.price).toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCompletingApt(null)}
+                  className="flex-1 py-3 px-4 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 px-4 bg-green-500 hover:bg-green-600 text-green-950 rounded-xl font-bold transition-colors shadow-lg shadow-green-500/20"
+                >
+                  Confirmar Finalização
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -161,3 +273,4 @@ function CalendarIcon() {
     </svg>
   );
 }
+
