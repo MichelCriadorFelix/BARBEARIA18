@@ -101,8 +101,9 @@ create policy "Admin can insert services" on services for all to authenticated u
   exists (select 1 from profiles where id = auth.uid() and role = 'admin')
 );
 
--- Perfis: Podem ver todos os perfis e editar o seu
+-- Perfis: Podem ver todos os perfis, inserir e editar o seu
 create policy "Read profiles" on profiles for select to authenticated using (true);
+create policy "Insert profiles" on profiles for insert to authenticated with check (auth.uid() = id);
 create policy "Update own profile" on profiles for update to authenticated using (auth.uid() = id);
 
 -- Agendamentos: Admin vê tudo, Cliente vê apenas os seus

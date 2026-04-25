@@ -78,36 +78,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
+      // Usando maybeSingle para evitar a exceção PGRST116 e lidar amigavelmente com ausência de profile
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
         
-      if (error && error.code !== "PGRST116") {
+      if (error) {
         console.error("Error fetching profile", error);
       }
       
-      // Attempt to auto-repair missing profiles
-      if (error?.code === "PGRST116") {
-        console.warn("Profile missing. Attempting to recreate...");
+      if (data) {
+        setProfile(data as Profile);
+      } else {
+        console.warn("Profile not found in database. The trigger might have failed or RLS blocked reading.");
+        // Mock a fallback profile to prevent the UI from freezing on "Falha na Conexão",
+        // forcing the user to log out and log in again if necessary.
         const { data: userData } = await supabase.auth.getUser();
         if (userData?.user) {
-           const email = userData.user.email;
-           const newName = userData.user.user_metadata?.full_name || userData.user.user_metadata?.name || email?.split('@')[0] || "Usuário";
-           const { data: newProfile, error: insertErr } = await supabase
-              .from("profiles")
-              .insert([{ id: userId, role: "client", full_name: newName }])
-              .select().single();
-              
-           if (!insertErr && newProfile) {
-             setProfile(newProfile as Profile);
-             return;
-           }
+          const email = userData.user.email;
+          const fallbackName = userData.user.user_metadata?.full_name || email?.split('@')[0] || "Usuário";
+          
+          setProfile({
+            id: userId,
+            role: "client",
+            full_name: fallbackName,
+            phone: ""
+          });
+          
+          // Tenta recriar discretamente, sem travar o app se falhar (pode ser erro de constraint se já existir)
+          Promise.resolve().then(async () => {
+             await supabase.from("profiles").upsert([{ 
+                id: userId, 
+                role: "client", 
+                full_name: fallbackName 
+             }], { onConflict: 'id' }).select();
+          });
         }
       }
-      
-      if (data) setProfile(data as Profile);
     } catch (error) {
       console.error("Fatal error fetching profile:", error);
     }
