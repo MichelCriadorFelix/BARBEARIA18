@@ -17,7 +17,7 @@ export function Login() {
         provider: 'google',
         options: {
           redirectTo: window.location.origin,
-          skipBrowserRedirect: isIframe,
+          skipBrowserRedirect: isIframe, // Crucial for iframes
           queryParams: {
             prompt: 'select_account'
           }
@@ -26,17 +26,33 @@ export function Login() {
 
       if (signInError) throw signInError;
       
+      // If we are in the preview (iframe), we MUST open the URL in a new window/popup
       if (isIframe && data?.url) {
-        const popup = window.open(data.url, 'oauth_popup', 'width=600,height=700');
+        // Open popup
+        const width = 600;
+        const height = 700;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
         
-        // Polling if the popup is closed or if we get signed in
-        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-          if (event === 'SIGNED_IN' && session) {
-            if (popup) popup.close();
-            authListener.subscription.unsubscribe();
-            // Redirect will be handled by AuthContext state change usually
+        const popup = window.open(
+          data.url, 
+          'google_login', 
+          `width=${width},height=${height},left=${left},top=${top}`
+        );
+
+        // Check if popup was blocked
+        if (!popup) {
+          throw new Error("O navegador bloqueou o popup de login. Por favor, permita popups para este site.");
+        }
+
+        // The AuthContext listener will handle the actual session update.
+        // We just wait for the window to close or session to appear.
+        const checkPopup = setInterval(() => {
+          if (!popup || popup.closed) {
+            clearInterval(checkPopup);
+            setLoading(false);
           }
-        });
+        }, 1000);
       }
     } catch (err: any) {
       console.error("Login error:", err);

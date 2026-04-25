@@ -57,24 +57,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth Event:", event, "Session present:", !!session);
+      console.log("Auth Event:", event, "Session UID:", session?.user?.id);
       
       if (!isMounted) return;
       
-      const prevUser = user;
       const newUser = session?.user ?? null;
       
-      setUser(newUser);
-      
-      if (newUser) {
-        // Only fetch if it's a new login or if we don't have a profile yet
-        if (!prevUser || prevUser.id !== newUser.id || !profile) {
-          await fetchProfile(newUser.id);
-        }
-      } else {
+      // If user signed out
+      if (!newUser) {
+        setUser(null);
         setProfile(null);
         setIsLoading(false);
+        return;
       }
+
+      // If user is present (login or refresh)
+      setUser(newUser);
+      
+      // Always fetch profile if we have a user to keep it fresh
+      // But only if we don't already have it or if it's a new ID
+      await fetchProfile(newUser.id);
     });
 
     // Fallback de segurança para garantir que a UI não fique presa
