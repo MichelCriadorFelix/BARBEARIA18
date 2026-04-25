@@ -90,13 +90,16 @@ export function AppLayout() {
                 <p className="text-sm font-semibold truncate text-white">{displayUserName}</p>
               </div>
             </div>
-            <button
-              onClick={signOut}
-              className="p-2 text-white/40 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+            <div
+              onClick={(e) => {
+                console.log("Sair clicked");
+                return signOut();
+              }}
+              className="p-2 text-white/40 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors cursor-pointer"
               title="Sair"
             >
               <LogOut className="w-4 h-4" />
-            </button>
+            </div>
           </div>
         </div>
       </nav>

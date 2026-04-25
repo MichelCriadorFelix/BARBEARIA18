@@ -95,12 +95,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error("Error signing out:", error);
-    } finally {
+      console.log("Signing out user inside AuthContext...");
+      // clear immediately
       setUser(null);
       setProfile(null);
+      await supabase.auth.signOut();
+      console.log("Supabase signOut completed");
+      // in case of any url caching
+      window.location.href = '/'; 
+    } catch (error) {
+      console.error("Error signing out:", error);
     }
   };
 
