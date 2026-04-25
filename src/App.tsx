@@ -5,6 +5,38 @@ import { hasSupabaseKeys, supabase } from "@/lib/supabase";
 import { SetupSupabase } from "@/components/SetupSupabase";
 import { Login } from "@/pages/Login";
 import { AppLayout } from "@/components/Layout";
+import { AlertCircle } from "lucide-react";
+import { ErrorBoundary } from "react-error-boundary";
+
+function ErrorFallback({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) {
+  return (
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4">
+      <div className="bg-white/5 border border-white/10 p-8 rounded-2xl max-w-md w-full text-center space-y-4 backdrop-blur-xl shadow-2xl">
+        <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto border border-red-500/20">
+          <AlertCircle className="w-8 h-8 text-red-500" />
+        </div>
+        <h2 className="text-xl font-bold text-white">Ops! Erro no sistema.</h2>
+        <p className="text-sm text-white/40 leading-relaxed">
+          Ocorreu um erro inesperado. Tente recarregar para restaurar a conexão com o servidor.
+        </p>
+        <div className="pt-4 flex flex-col gap-2">
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-amber-500 hover:bg-amber-600 text-amber-950 font-black uppercase text-xs tracking-widest py-4 rounded-xl transition-all active:scale-[0.98]"
+          >
+            Recarregar agora
+          </button>
+          <button
+            onClick={resetErrorBoundary}
+            className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl transition-all border border-white/10 text-xs"
+          >
+            Tentar Restaurar sessão
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Client Pages
 import { ClientBooking } from "@/pages/Client/Booking";
@@ -133,7 +165,9 @@ export default function App() {
   return (
     <AuthProvider>
       <Router>
-        <RoutesRenderer />
+        <ErrorBoundary FallbackComponent={ErrorFallback} onReset={() => window.location.href = "/"}>
+          <RoutesRenderer />
+        </ErrorBoundary>
       </Router>
     </AuthProvider>
   );

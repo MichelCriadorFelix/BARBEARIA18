@@ -98,7 +98,7 @@ export function ClientHistory() {
                         ⚠️ Importante: Após o pagamento, envie o comprovante para confirmar sua reserva.
                       </p>
                       <a 
-                        href={`https://wa.me/5521965249265?text=Olá, segue o comprovante do meu corte agendado para ${format(new Date(apt.start_time), "dd/MM 'às' HH:mm")}.`}
+                        href={`https://wa.me/5521965249265?text=Olá, segue o comprovante do meu corte agendado para ${apt.start_time ? format(new Date(apt.start_time), "dd/MM 'às' HH:mm", { locale: ptBR }) : ""}.`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-full transition-all active:scale-95"
@@ -121,8 +121,8 @@ export function ClientHistory() {
                   <div>
                     <h3 className="font-bold text-lg text-white">{apt.services?.name}</h3>
                     <div className="flex items-center gap-4 text-sm text-white/40 mt-1">
-                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {format(new Date(apt.start_time), "HH:mm")}</span>
-                      <span className="font-medium text-amber-500">R$ {apt.services?.price.toFixed(2)}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {apt.start_time ? format(new Date(apt.start_time), "HH:mm") : "--:--"}</span>
+                      <span className="font-medium text-amber-500">R$ {apt.services?.price ? Number(apt.services.price).toFixed(2) : "0.00"}</span>
                     </div>
                   </div>
                 </div>

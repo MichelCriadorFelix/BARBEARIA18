@@ -215,12 +215,12 @@ export function ClientBooking() {
         </div>
         <div className="space-y-2">
             <h2 className="text-2xl font-bold text-white">Reserva Solicitada!</h2>
-            <p className="text-white/60 max-w-md">Sua solicitação de horário para {selectedSlot ? format(selectedSlot, "dd/MM 'às' HH:mm", { locale: ptBR }) : "--:--"} foi enviada ao barbeiro. Aguarde a aprovação na aba Meus Cortes.</p>
+            <p className="text-white/60 max-w-md">Sua solicitação de horário para {selectedSlot instanceof Date ? format(selectedSlot, "dd/MM 'às' HH:mm", { locale: ptBR }) : "--:--"} foi enviada ao barbeiro. Aguarde a aprovação na aba Meus Cortes.</p>
         </div>
 
         <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-lg flex flex-col items-center mt-6">
             <h3 className="font-bold text-lg mb-2 text-white">Pague via PIX</h3>
-            <p className="text-sm text-white/60 mb-4 text-center">Para agilizar, você já pode efetuar o pagamento do valor de R$ {selectedService?.price.toFixed(2)}</p>
+            <p className="text-sm text-white/60 mb-4 text-center">Para agilizar, você já pode efetuar o pagamento do valor de R$ {selectedService?.price ? Number(selectedService.price).toFixed(2) : "0.00"}</p>
             
             <div className="w-full bg-black/40 rounded-xl p-4 mb-4 flex flex-col items-center border border-white/5">
               <span className="text-xs text-white/40 uppercase mb-1">Chave CPF</span>
@@ -292,7 +292,7 @@ export function ClientBooking() {
               </button>
               
               <a 
-                href={`https://wa.me/55${WHATSAPP_NUMBER}?text=Olá,%20segue%20o%20comprovante%20do%20meu%20corte%20${confirmedAppointment.services?.name}%20agendado%20para%20${format(new Date(confirmedAppointment.start_time), "dd/MM 'às' HH:mm")}.`}
+                href={`https://wa.me/55${WHATSAPP_NUMBER}?text=Olá,%20segue%20o%20comprovante%20do%20meu%20corte%20${confirmedAppointment.services?.name || 'agendado'}%20agendado%20para%20${confirmedAppointment.start_time ? format(new Date(confirmedAppointment.start_time), "dd/MM 'às' HH:mm") : ''}.`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors uppercase text-xs font-black shadow-lg shadow-green-500/10"
@@ -334,7 +334,7 @@ export function ClientBooking() {
                   <div className="font-bold">{srv.name}</div>
                   <div className="text-sm text-white/40">{srv.duration} min</div>
                 </div>
-                <div className="font-bold text-amber-500">R$ {srv.price.toFixed(2)}</div>
+                <div className="font-bold text-amber-500">R$ {srv.price ? Number(srv.price).toFixed(2) : "0.00"}</div>
               </button>
             ))}
           </div>
