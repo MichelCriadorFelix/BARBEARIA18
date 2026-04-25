@@ -3,10 +3,11 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, startOfDay, endOfDay, addDays, setHours, setMinutes, isSameDay, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar as CalendarIcon, Clock, Scissors, CheckCircle, Copy } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Scissors, CheckCircle, Copy, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const CHAVE_PIX = "email-da-barbearia18@exemplo.com"; 
+const CHAVE_PIX = "122.836.777-76"; 
+const WHATSAPP_NUMBER = "21965249265";
 
 export function ClientBooking() {
   const { profile } = useAuth();
@@ -171,13 +172,34 @@ export function ClientBooking() {
 
         <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-lg flex flex-col items-center mt-6">
             <h3 className="font-bold text-lg mb-2 text-white">Pague via PIX</h3>
-            <p className="text-sm text-white/60 mb-6">Para agilizar, você já pode efetuar o pagamento do valor de R$ {selectedService?.price.toFixed(2)}</p>
+            <p className="text-sm text-white/60 mb-4 text-center">Para agilizar, você já pode efetuar o pagamento do valor de R$ {selectedService?.price.toFixed(2)}</p>
+            
+            <div className="w-full bg-black/40 rounded-xl p-4 mb-4 flex flex-col items-center border border-white/5">
+              <span className="text-xs text-white/40 uppercase mb-1">Chave CPF</span>
+              <span className="text-lg font-mono tracking-widest font-bold text-amber-500">***.***.***-76</span>
+            </div>
+
             <button 
                 onClick={handleCopyPix}
-                className="w-full border border-amber-500/50 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 font-bold px-6 py-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                className="w-full border border-amber-500/50 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 font-bold px-6 py-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] mb-4"
             >
                 <Copy className="w-5 h-5" /> Copiar Chave PIX
             </button>
+
+            <div className="text-center space-y-4">
+              <p className="text-xs text-white/40">
+                ⚠️ Importante: Após o pagamento, você <strong>deve enviar o comprovante</strong> pelo WhatsApp para confirmar sua reserva.
+              </p>
+              
+              <a 
+                href={`https://wa.me/55${WHATSAPP_NUMBER}?text=Olá,%20acabei%20de%20fazer%20um%20agendamento%20e%20aqui%20está%20meu%20comprovante.`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white text-sm font-bold px-4 py-2 rounded-full transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" /> Enviar Comprovante
+              </a>
+            </div>
         </div>
 
         <button 
