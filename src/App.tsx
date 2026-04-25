@@ -26,7 +26,44 @@ function ProtectedRoute({ children, adminOnly = false }: { children: React.React
     return <Navigate to="/login" replace />;
   }
 
-  // Removemos a tela de "Falha ao Buscar Perfil" porque o AuthContext gerencia o fallback.
+  const [profileLoadWait, setProfileLoadWait] = React.useState(0);
+
+  React.useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (user && !profile) {
+      interval = setInterval(() => setProfileLoadWait(p => p + 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [user, profile]);
+
+  // Wait for profile to load if user exists
+  if (user && !profile) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-4">
+         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500 mb-4"></div>
+         <p className="text-white text-center">
+            {profileLoadWait > 5 ? "Demorando mais que o esperado para carregar o perfil..." : "Carregando perfil..."}
+         </p>
+         {profileLoadWait > 10 && (
+           <div className="mt-8 flex flex-col items-center gap-4 animate-in fade-in">
+             <p className="text-white/50 text-sm max-w-sm text-center">
+               Se a tela estiver travada, o banco de dados pode estar indisponível ou a conexão falhou. 
+             </p>
+             <button 
+               onClick={() => {
+                 localStorage.clear();
+                 sessionStorage.clear();
+                 window.location.replace('/login');
+               }}
+               className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-red-500/20 hover:text-red-400 transition-colors"
+             >
+               Deslogar e Tentar Novamente
+             </button>
+           </div>
+         )}
+      </div>
+    );
+  }
 
   // Se a rota for só de admin e o usuario logou e tem info, mas não é admin, manda para home de cliente
   if (adminOnly && profile && profile.role !== "admin") {

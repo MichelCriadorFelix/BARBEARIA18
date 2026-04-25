@@ -52,8 +52,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkUser();
 
     // Listen for changes on auth state (logged in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
+      
+      // Prevent double fetching on initial load since checkUser() already handles it
+      if (event === 'INITIAL_SESSION') return;
+      
       // Não bloqueia a UI totalmente a cada re-login se ja temos um user (só para suavizar)
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -85,36 +89,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq("id", userId)
         .maybeSingle();
         
+      console.log("Fetch profile result for", userId, { data, error });
+        
       if (error) {
         console.error("Error fetching profile", error);
+        // Do not create a fallback if there's a genuine database error (like 401 JWT Expired)
+        // because that means the profile might exist but we just can't read it right now.
+        // Wait for token refresh or simply fail gracefully.
+        return;
       }
       
       if (data) {
-        setProfile(data as Profile);
+        const fetchedProfile = data as Profile;
+        
+        // Auto-fix admin role for the app owner if it got downgraded by accident
+        const email = (await supabase.auth.getUser()).data.user?.email || "";
+        const isOwner = email === "michelgeminicriador@gmail.com" || email === "felixecastroadv@gmail.com";
+        
+        if (isOwner && fetchedProfile.role !== "admin") {
+           fetchedProfile.role = "admin";
+           // update db silently
+           supabase.from("profiles").update({ role: "admin" }).eq("id", userId).then();
+        }
+        
+        setProfile(fetchedProfile);
       } else {
         console.warn("Profile not found in database. Setting fallback profile...");
         const { data: userData } = await supabase.auth.getUser();
-        const email = userData?.user?.email || "";
-        const fallbackName = userData?.user?.user_metadata?.full_name || email?.split('@')[0] || "Usuário";
         
-        const fallbackProfile = {
+        // If getUser also fails, it's extremely likely the token is invalid or expired.
+        if (!userData || !userData.user) {
+           console.error("Could not get user data. Token might be expired.");
+           return;
+        }
+
+        const email = userData.user.email || "";
+        const fallbackName = userData.user.user_metadata?.full_name || email?.split('@')[0] || "Usuário";
+        
+        // Auto-promote the owner to admin during fallback
+        const isOwner = email === "michelgeminicriador@gmail.com" || email === "felixecastroadv@gmail.com";
+        
+        const fallbackProfile: Profile = {
           id: userId,
-          role: "client",
+          role: isOwner ? "admin" : "client",
           full_name: fallbackName,
           phone: ""
         };
         
         setProfile(fallbackProfile);
         
-        // Asynchronously try to recreate the profile in the DB just in case it was missing
+        // Use insert instead of upsert so we don't accidentally overwrite an existing profile
+        // due to RLS bugs or network races.
         Promise.resolve().then(async () => {
-           await supabase.from("profiles").upsert([fallbackProfile], { onConflict: 'id' });
+           const { error: insertErr } = await supabase.from("profiles").insert([fallbackProfile]);
+           if (insertErr) console.warn("Failed to insert fallback profile (maybe it already exists)", insertErr);
         });
       }
     } catch (error) {
       console.error("Fatal error fetching profile:", error);
-      // Failsafe: if everything crashes, at least grant a dummy client profile so the app doesn't lock up
-      setProfile({ id: userId, role: "client", full_name: "Visitante", phone: "" });
+      // Give them a volatile failsafe profile so they don't get stuck on the loading screen forever
+      setProfile({ id: userId, role: "client", full_name: "Erro na Conexão", phone: "" });
     }
   };
 
@@ -124,12 +158,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // clear immediately
       setUser(null);
       setProfile(null);
+      
+      // Force clear in local storage first to preempt any race condition
+      localStorage.clear();
+      sessionStorage.clear();
+      
       await supabase.auth.signOut();
       console.log("Supabase signOut completed");
-      // in case of any url caching
-      window.location.href = '/'; 
+      
+      window.location.replace('/login'); 
     } catch (error) {
       console.error("Error signing out:", error);
+      // Failsafe exit
+      localStorage.clear();
+      window.location.replace('/login');
     }
   };
 
