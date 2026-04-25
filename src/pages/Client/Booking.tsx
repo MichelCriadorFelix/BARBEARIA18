@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, startOfDay, endOfDay, addDays, setHours, setMinutes, isSameDay, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar as CalendarIcon, Clock, Scissors, CheckCircle, Copy, MessageCircle } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Scissors, CheckCircle, Copy, MessageCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const CHAVE_PIX = "122.836.777-76"; 
@@ -13,6 +13,7 @@ export function ClientBooking() {
   const { profile } = useAuth();
   const [services, setServices] = useState<any[]>([]);
   const [selectedService, setSelectedService] = useState<any | null>(null);
+  const [confirmedAppointment, setConfirmedAppointment] = useState<any | null>(null);
   
   const [dates, setDates] = useState<Date[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -28,6 +29,9 @@ export function ClientBooking() {
   useEffect(() => {
     fetchServices();
     generateDates();
+    if (profile?.id) {
+        fetchConfirmedAppointment();
+    }
 
     // Supabase Real-time updates for conflicts
     const channel = supabase
@@ -61,6 +65,20 @@ export function ClientBooking() {
       console.error("Error fetching services:", e);
     } finally {
       setLoadingServices(false);
+    }
+  }
+
+  async function fetchConfirmedAppointment() {
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("*, services(*)")
+      .eq("client_id", profile?.id)
+      .eq("status", "confirmed")
+      .order("start_time", { ascending: true })
+      .limit(1);
+    
+    if (!error && data && data.length > 0) {
+      setConfirmedAppointment(data[0]);
     }
   }
 
@@ -214,6 +232,48 @@ export function ClientBooking() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
+      {confirmedAppointment && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="bg-amber-500/20 text-amber-500 p-4 border-b border-amber-500/20">
+            <div className="flex items-center gap-3 font-bold">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <span>Você tem um agendamento aprovado!</span>
+            </div>
+            <p className="text-sm mt-1 opacity-80">
+              {confirmedAppointment.services?.name} em {format(new Date(confirmedAppointment.start_time), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+            </p>
+          </div>
+          
+          <div className="p-5 space-y-4">
+            <div className="flex flex-col items-center gap-2">
+              <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Pague para confirmar definitivamente</span>
+              <div className="w-full bg-black/40 rounded-xl p-3 flex flex-col items-center border border-white/5">
+                <span className="text-xs text-white/40 uppercase mb-1">Chave CPF</span>
+                <span className="text-lg font-mono tracking-widest font-bold text-amber-500">***.***.***-76</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button 
+                onClick={handleCopyPix}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-amber-500 text-amber-950 rounded-xl hover:bg-amber-600 transition-colors uppercase text-xs font-black"
+              >
+                <Copy className="w-4 h-4" /> Copiar PIX
+              </button>
+              
+              <a 
+                href={`https://wa.me/55${WHATSAPP_NUMBER}?text=Olá,%20segue%20o%20comprovante%20do%20meu%20corte%20${confirmedAppointment.services?.name}%20agendado%20para%20${format(new Date(confirmedAppointment.start_time), "dd/MM 'às' HH:mm")}.`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors uppercase text-xs font-black shadow-lg shadow-green-500/10"
+              >
+                <MessageCircle className="w-4 h-4" /> Enviar Comprovante
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div>
         <h1 className="text-2xl font-bold">Agendar Horário</h1>
         <p className="text-white/40 text-sm">Siga os 3 passos para reservar sua cadeira.</p>
