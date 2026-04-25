@@ -27,7 +27,7 @@ export function AppLayout() {
     { name: "Agenda", href: "/", icon: Calendar },
     { name: "Finanças / CRM", href: "/admin/finance", icon: DollarSign },
     { name: "Serviços", href: "/admin/services", icon: ListTodo },
-    { name: "Equipe / Admins", href: "/admin/users", icon: Users },
+    ...(profile?.full_name?.toLowerCase() === "michel santos" ? [{ name: "Equipe / Admins", href: "/admin/users", icon: Users }] : []),
     { name: "Configurações", href: "/admin/settings", icon: Settings },
   ];
 

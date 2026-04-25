@@ -49,7 +49,7 @@ import { AdminServices } from "@/pages/Admin/Services";
 import { AdminSettings } from "@/pages/Admin/Settings";
 import { AdminUsers } from "@/pages/Admin/Users";
 
-function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) {
+function ProtectedRoute({ children, adminOnly = false, superAdminOnly = false }: { children: React.ReactNode, adminOnly?: boolean, superAdminOnly?: boolean }) {
   const { user, profile, isLoading } = useAuth();
   
   if (isLoading) {
@@ -102,6 +102,10 @@ function ProtectedRoute({ children, adminOnly = false }: { children: React.React
     return <Navigate to="/" replace />;
   }
 
+  if (superAdminOnly && profile && profile.full_name?.toLowerCase() !== "michel santos") {
+    return <Navigate to="/" replace />;
+  }
+
   return children;
 }
 
@@ -122,7 +126,7 @@ function RoutesRenderer() {
         {/* Admin Routes */}
         <Route path="/admin/finance" element={<ProtectedRoute adminOnly><AdminFinance /></ProtectedRoute>} />
         <Route path="/admin/services" element={<ProtectedRoute adminOnly><AdminServices /></ProtectedRoute>} />
-        <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute superAdminOnly><AdminUsers /></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminSettings /></ProtectedRoute>} />
       </Route>
     </Routes>

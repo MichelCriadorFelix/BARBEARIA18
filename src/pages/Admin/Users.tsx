@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { User as UserIcon, Shield, ShieldAlert, Search, CheckCircle, AlertCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Navigate } from "react-router-dom";
 
 interface Profile {
   id: string;
@@ -10,7 +12,12 @@ interface Profile {
 }
 
 export function AdminUsers() {
+  const { profile } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
+
+  if (profile?.full_name?.toLowerCase() !== 'michel santos') {
+    return <Navigate to="/" replace />;
+  }
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error", text: string } | null>(null);
