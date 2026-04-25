@@ -2,8 +2,9 @@
   "name": "BARBEARIA 18",
   "short_name": "BARBEARIA 18",
   "description": "Sistema de agendamento Barbearia 18",
-  "start_url": "/",
-  "id": "barbearia18-pwa",
+  "start_url": "/?source=pwa",
+  "id": "com.b18.barbearia",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#050505",
@@ -13,13 +14,19 @@
       "src": "https://cdn-icons-png.flaticon.com/512/4829/4829731.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "https://cdn-icons-png.flaticon.com/512/4829/4829731.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/4829/4829731.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
