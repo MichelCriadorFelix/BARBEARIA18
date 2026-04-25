@@ -151,7 +151,7 @@ export function ClientBooking() {
       const { data: booked, error } = await supabase
         .from("appointments")
         .select("start_time, end_time")
-        .in("status", ["pending", "confirmed", "finished"])
+        .in("status", ["pending", "confirmed", "completed"])
         .gte("start_time", startRange)
         .lte("start_time", endRange);
 
@@ -196,7 +196,7 @@ export function ClientBooking() {
       const { data: currentBooked, error: fetchError } = await supabase
         .from("appointments")
         .select("start_time, end_time")
-        .in("status", ["pending", "confirmed", "finished"])
+        .in("status", ["pending", "confirmed", "completed"])
         .gte("start_time", startRange)
         .lte("start_time", endRange);
 

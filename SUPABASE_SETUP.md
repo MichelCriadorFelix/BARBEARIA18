@@ -106,10 +106,8 @@ create policy "Read profiles" on profiles for select to authenticated using (tru
 create policy "Insert profiles" on profiles for insert to authenticated with check (auth.uid() = id);
 create policy "Update own profile" on profiles for update to authenticated using (auth.uid() = id);
 
--- Agendamentos: Admin vê tudo, Cliente vê apenas os seus
-create policy "Read appointments" on appointments for select to authenticated using (
-  client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-);
+-- Agendamentos: Todos autênticados podem ver os horários (para ver disponibilidade), mas somente o dono ou admin edita
+create policy "Read appointments" on appointments for select to authenticated using (true);
 create policy "Insert appointments" on appointments for insert to authenticated with check (
   client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
 );
