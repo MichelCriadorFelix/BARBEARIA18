@@ -22,7 +22,7 @@ create extension if not exists "uuid-ossp";
 -- 1. Tabela de Perfis
 create table profiles (
   id uuid references auth.users on delete cascade primary key,
-  role text check (role in ('admin', 'client')) default 'client',
+  role text check (role in ('admin', 'user', 'client')) default 'user',
   full_name text,
   phone text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -77,7 +77,7 @@ begin
     new.id, 
     -- Resgatar o nome vindo do provider oauth (ex: Google)
     coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', 'Usuário'), 
-    'client'
+    'user'
   );
   return new;
 end;

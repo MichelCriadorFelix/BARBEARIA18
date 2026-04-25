@@ -4,7 +4,7 @@ import { User } from "@supabase/supabase-js";
 
 interface Profile {
   id: string;
-  role: "admin" | "client";
+  role: "admin" | "user" | "client";
   full_name: string;
   phone: string;
 }
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           setProfile({
             id: currentUser.id,
-            role: isOwner ? "admin" : "client",
+            role: isOwner ? "admin" : "user",
             full_name: fallbackName,
             phone: ""
           });
@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       setProfile({
         id: newUser.id,
-        role: isOwner ? "admin" : "client",
+        role: isOwner ? "admin" : "user",
         full_name: fallbackName,
         phone: ""
       });
@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         const fallbackProfile: Profile = {
           id: userId,
-          role: isOwner ? "admin" : "client",
+          role: isOwner ? "admin" : "user",
           full_name: fallbackName,
           phone: ""
         };
