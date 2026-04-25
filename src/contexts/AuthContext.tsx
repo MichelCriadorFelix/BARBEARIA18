@@ -100,19 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       if (data) {
-        const fetchedProfile = data as Profile;
-        
-        // Auto-fix admin role for the app owner if it got downgraded by accident
-        const email = (await supabase.auth.getUser()).data.user?.email || "";
-        const isOwner = email === "michelgeminicriador@gmail.com" || email === "felixecastroadv@gmail.com";
-        
-        if (isOwner && fetchedProfile.role !== "admin") {
-           fetchedProfile.role = "admin";
-           // update db silently
-           supabase.from("profiles").update({ role: "admin" }).eq("id", userId).then();
-        }
-        
-        setProfile(fetchedProfile);
+        setProfile(data as Profile);
       } else {
         console.warn("Profile not found in database. Setting fallback profile...");
         const { data: userData } = await supabase.auth.getUser();
@@ -126,12 +114,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const email = userData.user.email || "";
         const fallbackName = userData.user.user_metadata?.full_name || email?.split('@')[0] || "Usuário";
         
-        // Auto-promote the owner to admin during fallback
-        const isOwner = email === "michelgeminicriador@gmail.com" || email === "felixecastroadv@gmail.com";
-        
         const fallbackProfile: Profile = {
           id: userId,
-          role: isOwner ? "admin" : "client",
+          role: "client",
           full_name: fallbackName,
           phone: ""
         };
