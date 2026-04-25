@@ -46,8 +46,8 @@ export function AdminFinance() {
 
   async function fetchData(showLoading = true) {
     if (showLoading) setLoading(true);
-    // Get last 3 months
-    const startDate = startOfMonth(subMonths(new Date(), 2)).toISOString();
+    // Get last 3 months starting from the 1st of 2 months ago
+    const startDate = format(startOfMonth(subMonths(new Date(), 2)), 'yyyy-MM-dd');
     
     const { data, error } = await supabase
       .from("transactions")
@@ -110,12 +110,13 @@ export function AdminFinance() {
   }
 
   // Calculate metrics for current month
-  const currentMonth = format(new Date(), 'yyyy-MM');
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   
-  const currentMonthTx = transactions.filter(t => t.date.substring(0, 7) === currentMonth);
-  const income = currentMonthTx.filter(t => t.type === 'income').reduce((acc, curr) => acc + Number(curr.amount), 0);
-  const fixed_costs = currentMonthTx.filter(t => t.type === 'fixed_cost').reduce((acc, curr) => acc + Number(curr.amount), 0);
-  const variable_costs = currentMonthTx.filter(t => t.type === 'expense' || t.type === 'variable_cost').reduce((acc, curr) => acc + Number(curr.amount), 0);
+  const currentMonthTx = transactions.filter(t => t.date && t.date.substring(0, 7) === currentMonth);
+  const income = currentMonthTx.filter(t => t.type === 'income').reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  const fixed_costs = currentMonthTx.filter(t => t.type === 'fixed_cost').reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  const variable_costs = currentMonthTx.filter(t => t.type === 'expense' || t.type === 'variable_cost').reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
   
   const total_costs = fixed_costs + variable_costs;
   const profit = income - total_costs;
@@ -157,7 +158,9 @@ export function AdminFinance() {
             <div className="p-2 bg-green-500/10 rounded-lg"><TrendingUp className="w-5 h-5 text-green-500" /></div>
             <h3 className="text-white/40 font-medium">Receita (Mês)</h3>
           </div>
-          <p className="text-3xl font-bold text-white">R$ {income.toFixed(2)}</p>
+          <p className="text-3xl font-bold text-white">
+            {loading ? "..." : `R$ ${income.toFixed(2)}`}
+          </p>
         </div>
         
         <div className="bg-white/5 border border-white/10 p-5 rounded-2xl backdrop-blur-lg">
@@ -165,8 +168,10 @@ export function AdminFinance() {
             <div className="p-2 bg-red-500/10 rounded-lg"><TrendingDown className="w-5 h-5 text-red-500" /></div>
             <h3 className="text-white/40 font-medium">Custos Totais</h3>
           </div>
-          <p className="text-3xl font-bold text-white">R$ {total_costs.toFixed(2)}</p>
-          <p className="text-xs text-white/40 mt-1">Fixos: R$ {fixed_costs.toFixed(2)} | Var: R$ {variable_costs.toFixed(2)}</p>
+          <p className="text-3xl font-bold text-white">
+            {loading ? "..." : `R$ ${total_costs.toFixed(2)}`}
+          </p>
+          {!loading && <p className="text-xs text-white/40 mt-1">Fixos: R$ {fixed_costs.toFixed(2)} | Var: R$ {variable_costs.toFixed(2)}</p>}
         </div>
         
         <div className="bg-white/5 border border-white/10 p-5 rounded-2xl relative overflow-hidden backdrop-blur-lg">
@@ -176,7 +181,7 @@ export function AdminFinance() {
             <h3 className="text-white/40 font-medium">Lucro Líquido</h3>
           </div>
           <p className={`text-3xl font-bold relative z-10 ${profit >= 0 ? "text-amber-500" : "text-red-500"}`}>
-            R$ {profit.toFixed(2)}
+            {loading ? "..." : `R$ ${profit.toFixed(2)}`}
           </p>
         </div>
       </div>
