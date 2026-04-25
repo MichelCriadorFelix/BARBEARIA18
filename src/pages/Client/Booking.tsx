@@ -44,7 +44,7 @@ export function ClientBooking() {
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'agendamentos' 
+        table: 'appointments' 
       }, (payload) => {
         console.log("Database change detected, refreshing slots...", payload);
         if (selectedDate && selectedService) {
@@ -82,7 +82,7 @@ export function ClientBooking() {
   async function fetchConfirmedAppointment() {
     try {
       const { data, error } = await supabase
-        .from("agendamentos")
+        .from("appointments")
         .select("*, services(*)")
         .eq("client_id", profile?.id)
         .eq("status", "confirmed")
@@ -123,10 +123,27 @@ export function ClientBooking() {
       const slots: Date[] = [];
       let current = setMinutes(setHours(date, 8), 0);
       const end = setMinutes(setHours(date, 20), 0);
+      
+      // Ajuste de fuso horário para comparação (Horário de Brasília)
+      // Se estivermos em um ambiente UTC, precisamos subtrair 3 horas do "now" do sistema
+      // para comparar corretamente com os horários locais de 08:00-20:00.
       const now = new Date();
+      // Se date-fns ou o sistema estiver operando em UTC puro:
+      const offset = now.getTimezoneOffset(); // 0 em ambientes UTC
+      const isUTC = offset === 0;
+      
+      // Criamos uma referência do momento atual "ajustado" para a realidade do usuário no Brasil
+      // Se isUTC, subtraímos 3 horas (180 min) para ter o horário de Brasília comparável.
+      const nowAjusted = isUTC ? new Date(now.getTime() - (3 * 60 * 60 * 1000)) : now;
 
       while (isBefore(current, end)) {
-        if (isBefore(now, current)) {
+        // Se a data selecionada for hoje, só mostra horários que ainda não passaram
+        if (isSameDay(date, nowAjusted)) {
+          if (isBefore(nowAjusted, current)) {
+            slots.push(new Date(current));
+          }
+        } else {
+          // Para dias futuros, mostra tudo
           slots.push(new Date(current));
         }
         current = new Date(current.getTime() + durationMins * 60000);
@@ -137,7 +154,7 @@ export function ClientBooking() {
       const endRange = endOfDay(date).toISOString();
       
       const { data: booked, error } = await supabase
-        .from("agendamentos")
+        .from("appointments")
         .select("start_time, end_time")
         .in("status", ["pending", "confirmed"])
         .gte("start_time", startRange)
@@ -175,7 +192,7 @@ export function ClientBooking() {
     try {
       // Final availability check to prevent race conditions
       const { data: conflict, error: checkError } = await supabase
-        .from("agendamentos")
+        .from("appointments")
         .select("id")
         .in("status", ["pending", "confirmed"])
         .gte("start_time", selectedSlot.toISOString())
@@ -191,7 +208,7 @@ export function ClientBooking() {
         return;
       }
 
-      const { error } = await supabase.from("agendamentos").insert({
+      const { error } = await supabase.from("appointments").insert({
         client_id: profile.id,
         service_id: selectedService.id,
         start_time: selectedSlot.toISOString(),
