@@ -44,7 +44,7 @@ export function ClientBooking() {
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'appointments' 
+        table: 'agendamentos' 
       }, (payload) => {
         console.log("Database change detected, refreshing slots...", payload);
         if (selectedDate && selectedService) {
@@ -88,7 +88,7 @@ export function ClientBooking() {
   async function fetchConfirmedAppointment() {
     try {
       const { data, error } = await supabase
-        .from("appointments")
+        .from("agendamentos")
         .select("*, services(*)")
         .eq("client_id", profile?.id)
         .eq("status", "confirmed")
@@ -149,7 +149,7 @@ export function ClientBooking() {
       const endRange = endOfDay(date).toISOString();
       
       const { data: booked, error } = await supabase
-        .from("appointments")
+        .from("agendamentos")
         .select("start_time, end_time")
         .in("status", ["pending", "confirmed"])
         .gte("start_time", startRange)
@@ -189,12 +189,12 @@ export function ClientBooking() {
     const endTime = new Date(selectedSlot.getTime() + selectedService.duration * 60000);
 
     try {
-      // 1. Refresh booked appointments for the day immediately before checking
+      // 1. Refresh booked agendamentos for the day immediately before checking
       const startRange = startOfDay(selectedDate!).toISOString();
       const endRange = endOfDay(selectedDate!).toISOString();
 
       const { data: currentBooked, error: fetchError } = await supabase
-        .from("appointments")
+        .from("agendamentos")
         .select("start_time, end_time")
         .in("status", ["pending", "confirmed"])
         .gte("start_time", startRange)
@@ -216,7 +216,7 @@ export function ClientBooking() {
         return;
       }
 
-      const { error } = await supabase.from("appointments").insert({
+      const { error } = await supabase.from("agendamentos").insert({
         client_id: profile.id,
         service_id: selectedService.id,
         start_time: selectedSlot.toISOString(),
