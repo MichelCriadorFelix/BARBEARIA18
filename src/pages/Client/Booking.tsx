@@ -126,15 +126,16 @@ export function ClientBooking() {
       const durationMins = Number(durationStr) || 30;
       
       const slots: Date[] = [];
-      let current = setMinutes(setHours(date, 8), 0);
-      const end = setMinutes(setHours(date, 20), 0);
+      const baseDate = startOfDay(date);
+      let current = setMinutes(setHours(baseDate, 8), 0);
+      const end = setMinutes(setHours(baseDate, 20), 0);
       
       const now = new Date();
+      // Ajuste para Horário de Brasília (UTC-3) caso o servidor esteja em UTC
       const offset = now.getTimezoneOffset();
-      const isUTC = offset === 0;
-      const nowAjusted = isUTC ? new Date(now.getTime() - (3 * 60 * 60 * 1000)) : now;
+      const nowAjusted = offset === 0 ? new Date(now.getTime() - (3 * 60 * 60 * 1000)) : now;
 
-      while (isBefore(current, end)) {
+      while (current <= end) {
         if (isSameDay(date, nowAjusted)) {
           if (isBefore(nowAjusted, current)) {
             slots.push(new Date(current));
@@ -142,7 +143,7 @@ export function ClientBooking() {
         } else {
           slots.push(new Date(current));
         }
-        current = new Date(current.getTime() + 30 * 60000); // Check slots every 30 mins regardless of duration
+        current = new Date(current.getTime() + 30 * 60000); 
       }
 
       const startRange = startOfDay(date).toISOString();
@@ -160,8 +161,10 @@ export function ClientBooking() {
       const validSlots = slots.filter(slot => {
         const slotEnd = new Date(slot.getTime() + durationMins * 60000);
         
-        // Slot must end by 20:00
-        if (slotEnd > end) return false;
+        // Slot must end by 20:01 to allow a final 19:30 -> 20:00 slot to pass if end is 20:00
+        // or just allow the slot if it starts at 20:00 if they work later.
+        // The user said "terminar às 20h", so we allow appointments that end at 20:00.
+        if (slotEnd > new Date(end.getTime() + 1 * 60000)) return false;
 
         const hasConflict = booked?.some((b: any) => {
           const bStart = new Date(b.start_time);
