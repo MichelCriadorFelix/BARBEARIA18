@@ -69,9 +69,23 @@ export function ClientHistory() {
 
                     <div className="flex flex-col gap-2">
                        <button
-                         onClick={() => {
-                           navigator.clipboard.writeText("122.836.777-76");
-                           alert("Chave PIX copiada!");
+                         onClick={async () => {
+                           try {
+                             if (navigator.clipboard && window.isSecureContext) {
+                               await navigator.clipboard.writeText("122.836.777-76");
+                               alert("Chave PIX copiada!");
+                             } else {
+                               const textArea = document.createElement("textarea");
+                               textArea.value = "122.836.777-76";
+                               document.body.appendChild(textArea);
+                               textArea.select();
+                               document.execCommand('copy');
+                               document.body.removeChild(textArea);
+                               alert("Chave PIX copiada!");
+                             }
+                           } catch (err) {
+                             alert("Erro ao copiar. Use o CPF: 122.836.777-76");
+                           }
                          }}
                          className="flex items-center justify-center gap-2 px-4 py-3 bg-amber-500 text-amber-950 rounded-xl hover:bg-amber-600 transition-colors uppercase text-xs font-black shadow-lg shadow-amber-500/10"
                        >

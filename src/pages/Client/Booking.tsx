@@ -29,13 +29,18 @@ export function ClientBooking() {
   useEffect(() => {
     fetchServices();
     generateDates();
-    if (profile?.id) {
-        fetchConfirmedAppointment();
-    }
+  }, []);
 
+  useEffect(() => {
+    if (profile?.id) {
+      fetchConfirmedAppointment();
+    }
+  }, [profile?.id]);
+
+  useEffect(() => {
     // Supabase Real-time updates for conflicts
     const channel = supabase
-      .channel('public:appointments')
+      .channel('public:appointments_conflicts')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
         // If a slot is booked by someone else while looking, refresh slots
         if (selectedDate && selectedService) {
@@ -69,16 +74,22 @@ export function ClientBooking() {
   }
 
   async function fetchConfirmedAppointment() {
-    const { data, error } = await supabase
-      .from("appointments")
-      .select("*, services(*)")
-      .eq("client_id", profile?.id)
-      .eq("status", "confirmed")
-      .order("start_time", { ascending: true })
-      .limit(1);
-    
-    if (!error && data && data.length > 0) {
-      setConfirmedAppointment(data[0]);
+    try {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("*, services(*)")
+        .eq("client_id", profile?.id)
+        .eq("status", "confirmed")
+        .order("start_time", { ascending: true })
+        .limit(1);
+      
+      if (!error && data && data.length > 0) {
+        setConfirmedAppointment(data[0]);
+      } else {
+        setConfirmedAppointment(null);
+      }
+    } catch (err) {
+      console.error("Error fetching confirmed app:", err);
     }
   }
 
@@ -172,9 +183,28 @@ export function ClientBooking() {
     setIsBooking(false);
   }
 
-  const handleCopyPix = () => {
-    navigator.clipboard.writeText(CHAVE_PIX);
-    alert("Chave PIX copiada para a área de transferência!");
+  const handleCopyPix = async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(CHAVE_PIX);
+        alert("Chave PIX copiada para a área de transferência!");
+      } else {
+        // Fallback for non-secure contexts or browsers without clipboard API
+        const textArea = document.createElement("textarea");
+        textArea.value = CHAVE_PIX;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          alert("Chave PIX copiada!");
+        } catch (err) {
+          console.error('Fallback copy failed', err);
+        }
+        document.body.removeChild(textArea);
+      }
+    } catch (err) {
+      console.error("Clipboard copy failed:", err);
+    }
   };
 
   if (success) {
@@ -185,7 +215,7 @@ export function ClientBooking() {
         </div>
         <div className="space-y-2">
             <h2 className="text-2xl font-bold text-white">Reserva Solicitada!</h2>
-            <p className="text-white/60 max-w-md">Sua solicitação de horário para {format(selectedSlot!, "dd/MM 'às' HH:mm")} foi enviada ao barbeiro. Aguarde a aprovação na aba Meus Cortes.</p>
+            <p className="text-white/60 max-w-md">Sua solicitação de horário para {selectedSlot ? format(selectedSlot, "dd/MM 'às' HH:mm", { locale: ptBR }) : "--:--"} foi enviada ao barbeiro. Aguarde a aprovação na aba Meus Cortes.</p>
         </div>
 
         <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-lg flex flex-col items-center mt-6">
@@ -240,7 +270,7 @@ export function ClientBooking() {
               <span>Você tem um agendamento aprovado!</span>
             </div>
             <p className="text-sm mt-1 opacity-80">
-              {confirmedAppointment.services?.name} em {format(new Date(confirmedAppointment.start_time), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+              {confirmedAppointment.services?.name} em {confirmedAppointment.start_time ? format(new Date(confirmedAppointment.start_time), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR }) : "Horário indisponível"}
             </p>
           </div>
           
