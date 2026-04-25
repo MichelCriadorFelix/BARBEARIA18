@@ -18,7 +18,7 @@ export function ClientHistory() {
   async function fetchHistory() {
     setLoading(true);
     const { data, error } = await supabase
-      .from("appointments")
+      .from("agendamentos")
       .select(`
         *,
         services ( name, price, duration )

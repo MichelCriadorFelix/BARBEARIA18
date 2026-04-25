@@ -24,7 +24,7 @@ export function AdminAgenda() {
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'appointments' 
+        table: 'agendamentos' 
       }, () => {
         fetchAgenda();
       })
@@ -41,7 +41,7 @@ export function AdminAgenda() {
     const end = endOfDay(date).toISOString();
 
     const { data, error } = await supabase
-      .from("appointments")
+      .from("agendamentos")
       .select(`
         *,
         profiles ( full_name, phone ),
@@ -72,7 +72,7 @@ export function AdminAgenda() {
       });
     }
 
-    await supabase.from("appointments").update({ status }).eq("id", id);
+    await supabase.from("agendamentos").update({ status }).eq("id", id);
     fetchAgenda();
   }
 

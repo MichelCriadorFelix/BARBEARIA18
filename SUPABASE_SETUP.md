@@ -39,7 +39,7 @@ create table services (
 );
 
 -- 3. Tabela de Agendamentos
-create table appointments (
+create table agendamentos (
   id uuid default uuid_generate_v4() primary key,
   client_id uuid references profiles(id) not null,
   service_id uuid references services(id) not null,
@@ -50,7 +50,7 @@ create table appointments (
 );
 
 -- Habilitar o modo Realtime para atualizações em tempo real 
-alter publication supabase_realtime add table appointments;
+alter publication supabase_realtime add table agendamentos;
 
 -- 4. Tabela de Transações (CRM Financeiro)
 create table transactions (
@@ -59,7 +59,7 @@ create table transactions (
   amount numeric not null,
   description text not null,
   date date not null default current_date,
-  appointment_id uuid references appointments(id), -- Opcional, para faturamento de cortes
+  appointment_id uuid references agendamentos(id), -- Opcional, para faturamento de cortes
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -92,7 +92,7 @@ create trigger on_auth_user_created
 -- -----------------------------------------------------
 alter table profiles enable row level security;
 alter table services enable row level security;
-alter table appointments enable row level security;
+alter table agendamentos enable row level security;
 alter table transactions enable row level security;
 
 -- Todos os usuários logados podem ler o catálogo de serviços
@@ -107,13 +107,13 @@ create policy "Insert profiles" on profiles for insert to authenticated with che
 create policy "Update own profile" on profiles for update to authenticated using (auth.uid() = id);
 
 -- Agendamentos: Admin vê tudo, Cliente vê apenas os seus
-create policy "Read appointments" on appointments for select to authenticated using (
+create policy "Read agendamentos" on agendamentos for select to authenticated using (
   client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
 );
-create policy "Insert appointments" on appointments for insert to authenticated with check (
+create policy "Insert agendamentos" on agendamentos for insert to authenticated with check (
   client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
 );
-create policy "Update appointments" on appointments for update to authenticated using (
+create policy "Update agendamentos" on agendamentos for update to authenticated using (
   client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
 );
 
@@ -152,7 +152,7 @@ CREATE POLICY "Admin Gerenciar Tudo" ON storage.objects FOR ALL TO authenticated
 -- 1. No seu painel do Supabase, vá na aba "Database" (ícone de cilindro no menu lateral).
 -- 2. Clique em "Replication".
 -- 3. Em "Supabase Realtime", você verá uma tabela chamada "supabase_realtime" ou um link como "0 tables".
--- 4. Clique para gerenciar as tabelas e MARQUE a caixa da tabela "appointments".
+-- 4. Clique para gerenciar as tabelas e MARQUE a caixa da tabela "agendamentos".
 -- 5. Salve a alteração.
 -- Fazendo isso, o banco de dados vai "avisar" todos os celulares conectados sempre que um horário for ocupado!
 
@@ -160,7 +160,7 @@ CREATE POLICY "Admin Gerenciar Tudo" ON storage.objects FOR ALL TO authenticated
 -- 7. LIMPEZA DE DADOS (OPCIONAL)
 -- -----------------------------------------------------
 -- Se quiser apagar todos os agendamentos de teste:
--- DELETE FROM appointments;
+-- DELETE FROM agendamentos;
 
 ```
 

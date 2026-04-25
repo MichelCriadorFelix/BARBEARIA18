@@ -66,7 +66,7 @@ export function AdminSettings() {
       setMessage(null);
       
       const { error } = await supabase
-        .from('appointments')
+        .from('agendamentos')
         .delete()
         .neq('id', '00000000-0000-0000-0000-000000000000'); // Trick to delete all rows
 
