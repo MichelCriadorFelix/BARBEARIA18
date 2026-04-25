@@ -38,16 +38,22 @@ export function ClientBooking() {
   }, [profile?.id]);
 
   useEffect(() => {
-    // Supabase Real-time updates for conflicts
+    // Supabase Real-time updates for UNIVERSAL synchronization
     const channel = supabase
-      .channel('public:appointments_conflicts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
-        // If a slot is booked by someone else while looking, refresh slots
+      .channel('universal_booking_sync')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'appointments' 
+      }, (payload) => {
+        console.log("Database change detected, refreshing slots...", payload);
         if (selectedDate && selectedService) {
             generateSlots(selectedDate, selectedService.duration);
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Realtime subscription status:", status);
+      });
 
     return () => {
       supabase.removeChannel(channel);

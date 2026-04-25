@@ -145,6 +145,17 @@ CREATE POLICY "Admin Gerenciar Tudo" ON storage.objects FOR ALL TO authenticated
   (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
 );
 */
+-- -----------------------------------------------------
+-- 6. REALTIME: Ativação em Tempo Real (MUITO IMPORTANTE)
+-- -----------------------------------------------------
+-- Para que o horário suma no celular de outras pessoas instantaneamente sem precisar atualizar a página:
+-- 1. No seu painel do Supabase, vá na aba "Database" (ícone de cilindro no menu lateral).
+-- 2. Clique em "Replication".
+-- 3. Em "Supabase Realtime", você verá uma tabela chamada "supabase_realtime" ou um link como "0 tables".
+-- 4. Clique para gerenciar as tabelas e MARQUE a caixa da tabela "appointments".
+-- 5. Salve a alteração.
+-- Fazendo isso, o banco de dados vai "avisar" todos os celulares conectados sempre que um horário for ocupado!
+
 ```
 
 ## 4. Insira do Administrador (Eduardo Gomes)
