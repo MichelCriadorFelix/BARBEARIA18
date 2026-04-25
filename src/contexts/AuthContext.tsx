@@ -43,6 +43,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(currentUser);
         
         if (currentUser) {
+          // Set initial fallback while fetching
+          const email = currentUser.email || "";
+          const fallbackName = currentUser.user_metadata?.full_name || email.split('@')[0] || "Usuário";
+          const isOwner = email === "michelgeminicriador@gmail.com" || email === "felixecastroadv@gmail.com";
+          
+          setProfile({
+            id: currentUser.id,
+            role: isOwner ? "admin" : "client",
+            full_name: fallbackName,
+            phone: ""
+          });
+          setIsLoading(false);
+          
           await fetchProfile(currentUser);
         } else {
           setIsLoading(false);
@@ -71,11 +84,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // If user is present (login or refresh)
       setUser(newUser);
       
-      // Pass the user object directly to avoid redundant getUser calls
-      await fetchProfile(newUser);
+      // Unblock UI immediately with a temporary profile
+      const email = newUser.email || "";
+      const fallbackName = newUser.user_metadata?.full_name || email.split('@')[0] || "Usuário";
+      const isOwner = email === "michelgeminicriador@gmail.com" || email === "felixecastroadv@gmail.com";
+      
+      setProfile({
+        id: newUser.id,
+        role: isOwner ? "admin" : "client",
+        full_name: fallbackName,
+        phone: ""
+      });
+      setIsLoading(false);
+      
+      // Then try to "upgrade" it with real data from DB if available
+      fetchProfile(newUser);
     });
 
     // Fallback de segurança para garantir que a UI não fique presa
