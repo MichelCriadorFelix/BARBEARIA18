@@ -68,6 +68,12 @@ function HomeRouter() {
 }
 
 export default function App() {
+  React.useEffect(() => {
+    if (window.opener && window.location.hash.includes('access_token')) {
+      window.close();
+    }
+  }, []);
+
   if (!hasSupabaseKeys) {
     return <SetupSupabase />;
   }
