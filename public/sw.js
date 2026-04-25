@@ -32,7 +32,8 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+  // Only handle GET requests and skip Supabase/API calls for real-time accuracy
+  if (event.request.method !== 'GET' || event.request.url.includes('supabase.co')) return;
 
   event.respondWith(
     fetch(event.request)

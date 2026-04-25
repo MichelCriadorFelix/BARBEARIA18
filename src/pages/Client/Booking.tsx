@@ -51,14 +51,20 @@ export function ClientBooking() {
             generateSlots(selectedDate, selectedService.duration);
         }
       })
-      .subscribe((status) => {
-        console.log("Realtime subscription status:", status);
-      });
+      .subscribe();
+
+    // Fallback refresh every 30 seconds to ensure slots are never stale
+    const interval = setInterval(() => {
+      if (selectedDate && selectedService && !loadingSlots) {
+        generateSlots(selectedDate, selectedService.duration);
+      }
+    }, 30000);
 
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(interval);
     };
-  }, [selectedDate, selectedService]);
+  }, [selectedDate, selectedService, loadingSlots]);
 
   useEffect(() => {
     if (selectedDate && selectedService) {

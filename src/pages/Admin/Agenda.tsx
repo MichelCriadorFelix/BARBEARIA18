@@ -30,10 +30,16 @@ export function AdminAgenda() {
       })
       .subscribe();
 
+    // Fallback refresh every 30 seconds
+    const interval = setInterval(() => {
+      if (!loading) fetchAgenda();
+    }, 30000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(interval);
     };
-  }, [date]);
+  }, [date, loading]);
 
   async function fetchAgenda() {
     setLoading(true);
