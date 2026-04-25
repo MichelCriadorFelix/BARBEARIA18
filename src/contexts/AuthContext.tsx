@@ -92,33 +92,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data) {
         setProfile(data as Profile);
       } else {
-        console.warn("Profile not found in database. The trigger might have failed or RLS blocked reading.");
-        // Mock a fallback profile to prevent the UI from freezing on "Falha na Conexão",
-        // forcing the user to log out and log in again if necessary.
+        console.warn("Profile not found in database. Setting fallback profile...");
         const { data: userData } = await supabase.auth.getUser();
-        if (userData?.user) {
-          const email = userData.user.email;
-          const fallbackName = userData.user.user_metadata?.full_name || email?.split('@')[0] || "Usuário";
-          
-          setProfile({
-            id: userId,
-            role: "client",
-            full_name: fallbackName,
-            phone: ""
-          });
-          
-          // Tenta recriar discretamente, sem travar o app se falhar (pode ser erro de constraint se já existir)
-          Promise.resolve().then(async () => {
-             await supabase.from("profiles").upsert([{ 
-                id: userId, 
-                role: "client", 
-                full_name: fallbackName 
-             }], { onConflict: 'id' }).select();
-          });
-        }
+        const email = userData?.user?.email || "";
+        const fallbackName = userData?.user?.user_metadata?.full_name || email?.split('@')[0] || "Usuário";
+        
+        const fallbackProfile = {
+          id: userId,
+          role: "client",
+          full_name: fallbackName,
+          phone: ""
+        };
+        
+        setProfile(fallbackProfile);
+        
+        // Asynchronously try to recreate the profile in the DB just in case it was missing
+        Promise.resolve().then(async () => {
+           await supabase.from("profiles").upsert([fallbackProfile], { onConflict: 'id' });
+        });
       }
     } catch (error) {
       console.error("Fatal error fetching profile:", error);
+      // Failsafe: if everything crashes, at least grant a dummy client profile so the app doesn't lock up
+      setProfile({ id: userId, role: "client", full_name: "Visitante", phone: "" });
     }
   };
 
