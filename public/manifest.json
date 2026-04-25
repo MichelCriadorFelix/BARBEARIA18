@@ -8,14 +8,14 @@
   "theme_color": "#F59E0B",
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/lucide-react/lucide/main/icons/scissors.svg",
+      "src": "/icon.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png"
     },
     {
-      "src": "https://raw.githubusercontent.com/lucide-react/lucide/main/icons/scissors.svg",
+      "src": "/icon.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png"
     }
   ]
 }
