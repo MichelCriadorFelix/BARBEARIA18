@@ -31,10 +31,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     // Check active sessions and sets the user
     const checkUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
         setUser(session?.user ?? null);
         if (session?.user) {
           await fetchProfile(session.user.id);
@@ -42,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error("Auth error", error);
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
     
@@ -50,17 +53,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setIsLoading(true);
+      if (!isMounted) return;
+      // Não bloqueia a UI totalmente a cada re-login se ja temos um user (só para suavizar)
       setUser(session?.user ?? null);
       if (session?.user) {
         await fetchProfile(session.user.id);
       } else {
         setProfile(null);
       }
-      setIsLoading(false);
+      if (isMounted) setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Fallback de segurança para garantir que a UI não fique presa
+    const fallback = setTimeout(() => {
+      if (isMounted) setIsLoading(false);
+    }, 4000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(fallback);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchProfile = async (userId: string) => {
