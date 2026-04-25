@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { format, startOfDay, endOfDay, addDays, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle2, ChevronLeft, ChevronRight, Clock, User, XCircle, DollarSign } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Clock, User, XCircle, DollarSign, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function AdminAgenda() {
@@ -15,8 +15,18 @@ export function AdminAgenda() {
   const [paymentMethod, setPaymentMethod] = useState("pix");
   const [amountReceived, setAmountReceived] = useState("");
 
+  // States for walk-in (atendimento manual)
+  const [showWalkInModal, setShowWalkInModal] = useState(false);
+  const [services, setServices] = useState<any[]>([]);
+  const [walkInClientName, setWalkInClientName] = useState("");
+  const [walkInServiceId, setWalkInServiceId] = useState("");
+  const [walkInPaymentMethod, setWalkInPaymentMethod] = useState("pix");
+  const [walkInAmountReceived, setWalkInAmountReceived] = useState("");
+  const [submittingWalkIn, setSubmittingWalkIn] = useState(false);
+
   useEffect(() => {
     fetchAgenda();
+    fetchServices();
 
     // Real-time listener for the agenda
     const channel = supabase
@@ -40,6 +50,18 @@ export function AdminAgenda() {
       clearInterval(interval);
     };
   }, [date]);
+
+  async function fetchServices() {
+    try {
+      const { data } = await supabase.from("services").select("*").order("name");
+      if (data) {
+        setServices(data);
+        if (data.length > 0) setWalkInServiceId(data[0].id);
+      }
+    } catch (err) {
+      console.error("Error fetching services:", err);
+    }
+  }
 
   async function fetchAgenda() {
     try {
@@ -121,6 +143,56 @@ export function AdminAgenda() {
     setAmountReceived("");
   }
 
+  async function handleWalkInSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!walkInClientName || !walkInServiceId) return;
+
+    setSubmittingWalkIn(true);
+    try {
+      const selectedService = services.find(s => s.id === walkInServiceId);
+      if (!selectedService) return;
+
+      let changeDetails = "";
+      if (walkInPaymentMethod === "dinheiro" && walkInAmountReceived) {
+        const received = parseFloat(walkInAmountReceived);
+        const price = selectedService.price;
+        if (received > price) {
+          changeDetails = `(Troco: R$ ${(received - price).toFixed(2)})`;
+        }
+      }
+
+      const methodLabels: any = {
+        pix: "PIX",
+        credito: "Cartão de Crédito",
+        debito: "Cartão de Débito",
+        dinheiro: "Dinheiro"
+      };
+
+      const desc = `Atendimento Avulso: ${selectedService.name} - ${walkInClientName} | Pagamento: ${methodLabels[walkInPaymentMethod]} ${changeDetails}`;
+
+      // Insert directly into transactions
+      const { error } = await supabase.from("transactions").insert({
+        type: 'income',
+        amount: selectedService.price,
+        description: desc,
+        date: format(new Date(), 'yyyy-MM-dd')
+      });
+
+      if (error) throw error;
+
+      setShowWalkInModal(false);
+      setWalkInClientName("");
+      setWalkInPaymentMethod("pix");
+      setWalkInAmountReceived("");
+      alert("Atendimento avulso registrado no Financeiro com sucesso!");
+    } catch (err) {
+      console.error("Erro ao registrar atendimento avulso:", err);
+      alert("Erro ao registrar. Tente novamente.");
+    } finally {
+      setSubmittingWalkIn(false);
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       
@@ -130,16 +202,26 @@ export function AdminAgenda() {
           <p className="text-white/40 text-sm">Controle de horários e cortes.</p>
         </div>
 
-        <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-xl p-1 backdrop-blur-lg">
-          <button onClick={() => setDate(subDays(date, 1))} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-            <ChevronLeft className="w-5 h-5 text-white/40" />
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setShowWalkInModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-amber-950 font-bold rounded-xl transition-all active:scale-95 text-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Atendimento Extra</span>
           </button>
-          <div className="font-medium min-w-[140px] text-center capitalize text-white">
-            {format(date, "EEEE, dd 'de' MMM", { locale: ptBR })}
+
+          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-1 backdrop-blur-lg ml-2">
+            <button onClick={() => setDate(subDays(date, 1))} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+              <ChevronLeft className="w-5 h-5 text-white/40" />
+            </button>
+            <div className="font-medium min-w-[140px] text-center capitalize text-white">
+              {format(date, "EEEE, dd 'de' MMM", { locale: ptBR })}
+            </div>
+            <button onClick={() => setDate(addDays(date, 1))} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+              <ChevronRight className="w-5 h-5 text-white/40" />
+            </button>
           </div>
-          <button onClick={() => setDate(addDays(date, 1))} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-            <ChevronRight className="w-5 h-5 text-white/40" />
-          </button>
         </div>
       </div>
 
@@ -223,11 +305,110 @@ export function AdminAgenda() {
         )}
       </div>
 
+      {/* WALK-IN MODAL */}
+      {showWalkInModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="bg-[#111] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center gap-3 mb-6 text-white border-b border-white/10 pb-4">
+              <div className="bg-amber-500/20 p-2 rounded-lg text-amber-500">
+                <Plus className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Atendimento Avulso</h2>
+                <p className="text-white/40 text-xs">Registro manual de cliente sem agendamento</p>
+              </div>
+            </div>
+            
+            <form onSubmit={handleWalkInSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white/60 mb-1">Nome do Cliente</label>
+                <input
+                  type="text"
+                  required
+                  value={walkInClientName}
+                  onChange={e => setWalkInClientName(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-colors"
+                  placeholder="Nome do cliente"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white/60 mb-1">Corte / Serviço</label>
+                <select
+                  required
+                  value={walkInServiceId}
+                  onChange={e => setWalkInServiceId(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-colors"
+                >
+                  {services.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(2)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white/60 mb-1">Forma de Pagamento</label>
+                <select
+                  value={walkInPaymentMethod}
+                  onChange={e => setWalkInPaymentMethod(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-colors"
+                >
+                  <option value="pix">PIX</option>
+                  <option value="credito">Cartão de Crédito</option>
+                  <option value="debito">Cartão de Débito</option>
+                  <option value="dinheiro">Dinheiro</option>
+                </select>
+              </div>
+
+              {walkInPaymentMethod === 'dinheiro' && (
+                <div>
+                  <label className="block text-sm font-medium text-white/60 mb-1">Valor Recebido (Para Troco)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min={services.find(s => s.id === walkInServiceId)?.price || 0}
+                    value={walkInAmountReceived}
+                    onChange={e => setWalkInAmountReceived(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500"
+                    placeholder="Opcional"
+                  />
+                  {walkInAmountReceived && parseFloat(walkInAmountReceived) > (services.find(s => s.id === walkInServiceId)?.price || 0) && (
+                    <p className="text-amber-500 text-sm mt-2 font-medium bg-amber-500/10 p-2 rounded-lg">
+                      Troco a devolver: R$ {(parseFloat(walkInAmountReceived) - (services.find(s => s.id === walkInServiceId)?.price || 0)).toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setShowWalkInModal(false)}
+                  className="flex-1 py-3 px-4 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingWalkIn}
+                  className="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-600 text-amber-950 rounded-xl font-bold transition-colors disabled:opacity-50"
+                 >
+                  {submittingWalkIn ? "Salvando..." : "Registrar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* FINALIZAR AGENDAMENTO MODAL */}
       {completingApt && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl backdrop-blur-xl">
-            <div className="flex items-center gap-3 mb-4 text-white">
-              <DollarSign className="text-green-500" />
+          <div className="bg-[#111] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center gap-3 mb-4 text-white border-b border-white/10 pb-4">
+              <div className="bg-green-500/20 p-2 rounded-lg text-green-500">
+                <DollarSign className="w-5 h-5" />
+              </div>
               <h2 className="text-xl font-bold">Finalizar Corte</h2>
             </div>
             
@@ -265,14 +446,14 @@ export function AdminAgenda() {
                     placeholder={`Ex: ${(completingApt.services?.price + 10)?.toFixed(2)}`}
                   />
                   {amountReceived && parseFloat(amountReceived) > (completingApt.services?.price || 0) && (
-                    <p className="text-green-500 text-sm mt-2 font-medium">
-                      Troco: R$ {(parseFloat(amountReceived) - completingApt.services?.price).toFixed(2)}
+                    <p className="text-green-500 text-sm mt-2 font-medium bg-green-500/10 p-2 rounded-lg">
+                      Troco a devolver: R$ {(parseFloat(amountReceived) - completingApt.services?.price).toFixed(2)}
                     </p>
                   )}
                 </div>
               )}
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-4 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setCompletingApt(null)}
@@ -282,9 +463,9 @@ export function AdminAgenda() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 px-4 bg-green-500 hover:bg-green-600 text-green-950 rounded-xl font-bold transition-colors shadow-lg shadow-green-500/20"
+                  className="flex-1 py-3 px-4 bg-green-500 hover:bg-green-600 text-green-950 rounded-xl font-bold transition-colors"
                 >
-                  Confirmar Finalização
+                  Confirmar
                 </button>
               </div>
             </form>
@@ -302,4 +483,5 @@ function CalendarIcon() {
     </svg>
   );
 }
+
 
