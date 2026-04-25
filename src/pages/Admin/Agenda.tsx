@@ -25,7 +25,7 @@ export function AdminAgenda() {
   const [submittingWalkIn, setSubmittingWalkIn] = useState(false);
 
   useEffect(() => {
-    fetchAgenda();
+    fetchAgenda(true);
     fetchServices();
 
     // Real-time listener for the agenda
@@ -36,13 +36,13 @@ export function AdminAgenda() {
         schema: 'public', 
         table: 'appointments' 
       }, () => {
-        fetchAgenda();
+        fetchAgenda(false);
       })
       .subscribe();
 
     // Fallback refresh every 60 seconds
     const interval = setInterval(() => {
-      fetchAgenda();
+      fetchAgenda(false);
     }, 60000);
 
     return () => {
@@ -63,9 +63,9 @@ export function AdminAgenda() {
     }
   }
 
-  async function fetchAgenda() {
+  async function fetchAgenda(showLoading = true) {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const start = startOfDay(date).toISOString();
       const end = endOfDay(date).toISOString();
 

@@ -25,11 +25,27 @@ export function AdminFinance() {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
+
+    // Adiciona listener em tempo real para transações
+    const channel = supabase
+      .channel('finance_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'transactions' 
+      }, () => {
+        fetchData(false);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  async function fetchData() {
-    setLoading(true);
+  async function fetchData(showLoading = true) {
+    if (showLoading) setLoading(true);
     // Get last 3 months
     const startDate = startOfMonth(subMonths(new Date(), 2)).toISOString();
     
@@ -65,13 +81,13 @@ export function AdminFinance() {
     setEditingId(null);
     setAmount("");
     setDescription("");
-    fetchData();
+    fetchData(true);
   }
 
   async function handleDelete(id: string) {
     if (confirm("Tem certeza que deseja excluir esta transação?")) {
       await supabase.from("transactions").delete().eq("id", id);
-      fetchData();
+      fetchData(true);
     }
   }
 
@@ -94,9 +110,9 @@ export function AdminFinance() {
   }
 
   // Calculate metrics for current month
-  const currentMonth = startOfMonth(new Date()).toISOString().substring(0, 7); // YYYY-MM
+  const currentMonth = format(new Date(), 'yyyy-MM');
   
-  const currentMonthTx = transactions.filter(t => t.date.startsWith(currentMonth));
+  const currentMonthTx = transactions.filter(t => t.date.substring(0, 7) === currentMonth);
   const income = currentMonthTx.filter(t => t.type === 'income').reduce((acc, curr) => acc + Number(curr.amount), 0);
   const fixed_costs = currentMonthTx.filter(t => t.type === 'fixed_cost').reduce((acc, curr) => acc + Number(curr.amount), 0);
   const variable_costs = currentMonthTx.filter(t => t.type === 'expense' || t.type === 'variable_cost').reduce((acc, curr) => acc + Number(curr.amount), 0);
