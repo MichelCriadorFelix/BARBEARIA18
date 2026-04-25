@@ -51,13 +51,11 @@ function ProtectedRoute({ children, adminOnly = false }: { children: React.React
              </p>
              <button 
                onClick={() => {
-                 localStorage.clear();
-                 sessionStorage.clear();
                  window.location.replace('/login');
                }}
                className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-red-500/20 hover:text-red-400 transition-colors"
              >
-               Deslogar e Tentar Novamente
+               Voltar para Login
              </button>
            </div>
          )}

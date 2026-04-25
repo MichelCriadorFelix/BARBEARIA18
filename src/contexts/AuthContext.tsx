@@ -38,14 +38,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!isMounted) return;
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProfile(session.user.id);
+        
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        
+        if (currentUser) {
+          await fetchProfile(currentUser.id);
+        } else {
+          setIsLoading(false);
         }
       } catch (error) {
         console.error("Auth error", error);
-      } finally {
-        if (isMounted) setIsLoading(false);
+        setIsLoading(false);
       }
     };
     
@@ -53,25 +57,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth Event:", event, "Session present:", !!session);
+      
       if (!isMounted) return;
       
-      // Prevent double fetching on initial load since checkUser() already handles it
-      if (event === 'INITIAL_SESSION') return;
+      const prevUser = user;
+      const newUser = session?.user ?? null;
       
-      // Não bloqueia a UI totalmente a cada re-login se ja temos um user (só para suavizar)
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+      setUser(newUser);
+      
+      if (newUser) {
+        // Only fetch if it's a new login or if we don't have a profile yet
+        if (!prevUser || prevUser.id !== newUser.id || !profile) {
+          await fetchProfile(newUser.id);
+        }
       } else {
         setProfile(null);
+        setIsLoading(false);
       }
-      if (isMounted) setIsLoading(false);
     });
 
     // Fallback de segurança para garantir que a UI não fique presa
     const fallback = setTimeout(() => {
-      if (isMounted) setIsLoading(false);
-    }, 4000);
+      // Don't force loading false if we have a user but no profile yet, 
+      // let the profile fetcher finish or the ProtectedRoute handle it.
+      if (isMounted && !user) setIsLoading(false);
+    }, 6000);
 
     return () => {
       isMounted = false;
@@ -134,6 +145,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Fatal error fetching profile:", error);
       // Give them a volatile failsafe profile so they don't get stuck on the loading screen forever
       setProfile({ id: userId, role: "client", full_name: "Erro na Conexão", phone: "" });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -144,18 +157,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setProfile(null);
       
-      // Force clear in local storage first to preempt any race condition
-      localStorage.clear();
-      sessionStorage.clear();
-      
       await supabase.auth.signOut();
       console.log("Supabase signOut completed");
       
       window.location.replace('/login'); 
     } catch (error) {
       console.error("Error signing out:", error);
-      // Failsafe exit
-      localStorage.clear();
       window.location.replace('/login');
     }
   };
