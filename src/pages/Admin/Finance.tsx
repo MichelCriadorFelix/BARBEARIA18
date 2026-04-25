@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Plus, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Edit2, Trash2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 
@@ -18,6 +18,7 @@ export function AdminFinance() {
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [type, setType] = useState("fixed_cost");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -44,17 +45,52 @@ export function AdminFinance() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await supabase.from("transactions").insert({
-      type,
-      amount: parseFloat(amount),
-      description,
-      date
-    });
+    if (editingId) {
+      await supabase.from("transactions").update({
+        type,
+        amount: parseFloat(amount),
+        description,
+        date
+      }).eq("id", editingId);
+    } else {
+      await supabase.from("transactions").insert({
+        type,
+        amount: parseFloat(amount),
+        description,
+        date
+      });
+    }
     
     setIsModalOpen(false);
+    setEditingId(null);
     setAmount("");
     setDescription("");
     fetchData();
+  }
+
+  async function handleDelete(id: string) {
+    if (confirm("Tem certeza que deseja excluir esta transação?")) {
+      await supabase.from("transactions").delete().eq("id", id);
+      fetchData();
+    }
+  }
+
+  function openEditModal(tx: Transaction) {
+    setEditingId(tx.id);
+    setType(tx.type);
+    setAmount(tx.amount.toString());
+    setDescription(tx.description);
+    setDate(tx.date);
+    setIsModalOpen(true);
+  }
+
+  function openNewModal() {
+    setEditingId(null);
+    setType("fixed_cost");
+    setAmount("");
+    setDescription("");
+    setDate(format(new Date(), 'yyyy-MM-dd'));
+    setIsModalOpen(true);
   }
 
   // Calculate metrics for current month
@@ -91,7 +127,7 @@ export function AdminFinance() {
           <p className="text-white/40 text-sm">Controle de faturamento, custos e lucro limpo.</p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={openNewModal}
           className="bg-amber-500 hover:bg-amber-600 text-amber-950 font-bold py-2 px-4 rounded-xl flex items-center gap-2 transition-transform active:scale-95 text-sm"
         >
           <Plus className="w-4 h-4" />
@@ -157,8 +193,14 @@ export function AdminFinance() {
                 <p className="font-medium text-white">{tx.description}</p>
                 <p className="text-xs text-white/40">{format(new Date(tx.date), 'dd/MM/yyyy')} • {tx.type}</p>
               </div>
-              <div className={`font-bold ${tx.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
-                {tx.type === 'income' ? '+' : '-'} R$ {Number(tx.amount).toFixed(2)}
+              <div className="flex items-center gap-4">
+                <div className={`font-bold ${tx.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
+                  {tx.type === 'income' ? '+' : '-'} R$ {Number(tx.amount).toFixed(2)}
+                </div>
+                <div className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
+                  <button onClick={() => openEditModal(tx)} className="p-1 hover:text-amber-500"><Edit2 className="w-4 h-4" /></button>
+                  <button onClick={() => handleDelete(tx.id)} className="p-1 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                </div>
               </div>
             </div>
           ))}
@@ -169,7 +211,7 @@ export function AdminFinance() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl backdrop-blur-xl">
-            <h2 className="text-xl font-bold mb-4 text-white">Adicionar Despesa</h2>
+            <h2 className="text-xl font-bold mb-4 text-white">{editingId ? "Editar Lançamento" : "Adicionar Despesa"}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm text-white/40 mb-1">Tipo</label>
@@ -177,6 +219,7 @@ export function AdminFinance() {
                   <option value="fixed_cost">Custo Fixo (Aluguel, Luz)</option>
                   <option value="variable_cost">Custo Variável (Lâminas, Produtos)</option>
                   <option value="expense">Outra Despesa</option>
+                  {type === 'income' && <option value="income">Receita (Cortes etc)</option>}
                 </select>
               </div>
               <div>
@@ -189,7 +232,7 @@ export function AdminFinance() {
                   <input required type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 backdrop-blur-md" placeholder="150.00" />
                 </div>
                 <div>
-                  <label className="block text-sm text-white/40 mb-1">Data</label>
+                  <label className="block text-sm text-white/40 mb-1">Data de Vencimento / Pgto</label>
                   <input required type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 backdrop-blur-md" />
                 </div>
               </div>
