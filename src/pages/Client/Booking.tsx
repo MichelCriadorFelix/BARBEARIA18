@@ -5,7 +5,6 @@ import { format, startOfDay, endOfDay, addDays, setHours, setMinutes, isSameDay,
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon, Clock, Scissors, CheckCircle, Copy, MessageCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { InstallButton } from "@/components/InstallButton";
 
 const CHAVE_PIX = "122.836.777-76"; 
 const WHATSAPP_NUMBER = "21965249265";
@@ -309,7 +308,6 @@ export function ClientBooking() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
-      <InstallButton variant="banner" />
       
       {confirmedAppointment && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">

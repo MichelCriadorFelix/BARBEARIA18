@@ -6,7 +6,6 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
-import { InstallButton } from "./InstallButton";
 
 export function AppLayout() {
   const { profile, signOut } = useAuth();
@@ -72,9 +71,6 @@ export function AppLayout() {
         </div>
 
         <div className="space-y-4 pt-4 border-t border-white/10 mt-8">
-          <div className="px-2">
-            <InstallButton />
-          </div>
           
           <div className="flex flex-col gap-1 px-2 mb-2 text-white/40">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest">

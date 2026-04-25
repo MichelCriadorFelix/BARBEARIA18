@@ -4,7 +4,6 @@ import { format, startOfDay, endOfDay, addDays, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CheckCircle2, ChevronLeft, ChevronRight, Clock, User, XCircle, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { InstallButton } from "@/components/InstallButton";
 
 export function AdminAgenda() {
   const [date, setDate] = useState(new Date());
@@ -112,7 +111,6 @@ export function AdminAgenda() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <InstallButton variant="banner" />
       
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
