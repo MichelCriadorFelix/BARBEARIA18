@@ -45,9 +45,16 @@ export function InstallButton({ variant = "button" }: InstallButtonProps) {
   }, [isDismissed, deferredPrompt]);
 
   const handleInstallClick = async () => {
+    const isInIframe = window.self !== window.top;
+    
+    if (isInIframe) {
+      alert("Para instalar, você precisa abrir o aplicativo em uma nova aba (clique no botão 'Abrir em nova aba' no canto superior direito).");
+      return;
+    }
+
     if (!deferredPrompt) {
       // Manual instructions for iOS or others where beforeinstallprompt doesn't fire
-      alert("Para instalar: no Safari clique em Compartilhar e 'Adicionar à Tela de Início'. No Chrome, clique nos três pontos e 'Instalar aplicativo'.");
+      alert("Se o botão de instalação automática não apareceu: \n\nNo Android (Chrome): Clique nos três pontos (⋮) e em 'Instalar aplicativo'.\nNo iPhone (Safari): Clique em Compartilhar e 'Adicionar à Tela de Início'.");
       return;
     }
 
