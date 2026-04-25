@@ -14,6 +14,7 @@ import { ClientHistory } from "@/pages/Client/History";
 import { AdminAgenda } from "@/pages/Admin/Agenda";
 import { AdminFinance } from "@/pages/Admin/Finance";
 import { AdminServices } from "@/pages/Admin/Services";
+import { AdminSettings } from "@/pages/Admin/Settings";
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) {
   const { user, profile, isLoading } = useAuth();
@@ -88,6 +89,7 @@ function RoutesRenderer() {
         {/* Admin Routes */}
         <Route path="/admin/finance" element={<ProtectedRoute adminOnly><AdminFinance /></ProtectedRoute>} />
         <Route path="/admin/services" element={<ProtectedRoute adminOnly><AdminServices /></ProtectedRoute>} />
+        <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminSettings /></ProtectedRoute>} />
       </Route>
     </Routes>
   );

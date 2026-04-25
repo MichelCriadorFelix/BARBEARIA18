@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Calendar, User, Scissors, LogOut, LayoutDashboard, DollarSign, ListTodo, Clock } from "lucide-react";
+import { Calendar, User, Scissors, LogOut, LayoutDashboard, DollarSign, ListTodo, Clock, Settings } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Logo } from "./Logo";
 
 export function AppLayout() {
   const { profile, signOut } = useAuth();
@@ -26,6 +27,7 @@ export function AppLayout() {
     { name: "Agenda", href: "/", icon: Calendar },
     { name: "Finanças / CRM", href: "/admin/finance", icon: DollarSign },
     { name: "Serviços", href: "/admin/services", icon: ListTodo },
+    { name: "Configurações", href: "/admin/settings", icon: Settings },
   ];
 
   const links = isAdmin ? adminLinks : clientLinks;
@@ -38,9 +40,7 @@ export function AppLayout() {
       <nav className="w-full md:w-64 bg-black/40 backdrop-blur-md border-b md:border-b-0 md:border-r border-white/10 p-4 flex flex-shrink-0 flex-col justify-between">
         <div>
           <div className="flex items-center gap-3 mb-8 px-2 md:mt-4">
-            <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center shadow-lg shadow-amber-900/10 overflow-hidden border border-white/10">
-              <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
-            </div>
+            <Logo />
             <div>
               <h2 className="font-bold text-lg leading-tight tracking-tight uppercase italic">Barbearia <span className="text-amber-500 underline decoration-2 underline-offset-4">18</span></h2>
               <p className="text-[10px] text-amber-500 font-black uppercase tracking-widest mt-1">{isAdmin ? "Administração" : "Painel do Cliente"}</p>

@@ -4,6 +4,7 @@ import { Scissors } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { Logo } from "@/components/Logo";
 
 export function Login() {
   const [loading, setLoading] = useState(false);
@@ -79,10 +80,8 @@ export function Login() {
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-600 to-amber-400" />
         
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-4 transform rotate-3 shadow-[0_0_15px_rgba(245,158,11,0.2)] overflow-hidden border border-white/10">
-            <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tighter text-white">BARBEARIA 18</h1>
+          <Logo className="w-16 h-16 shadow-[0_0_15px_rgba(245,158,11,0.2)]" iconClassName="w-8 h-8" />
+          <h1 className="text-2xl font-bold tracking-tighter text-white mt-4">BARBEARIA 18</h1>
           <p className="text-sm text-white/40 mt-1">
             Faça login com sua conta Google para agendar seu horário.
           </p>

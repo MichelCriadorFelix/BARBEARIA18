@@ -121,6 +121,27 @@ create policy "Update appointments" on appointments for update to authenticated 
 create policy "Admin transactions" on transactions for all to authenticated using (
   exists (select 1 from profiles where id = auth.uid() and role = 'admin')
 );
+
+-- -----------------------------------------------------
+-- 5. STORAGE: Configuração da Logo
+-- -----------------------------------------------------
+-- 1. No Supabase, vá em Storage -> New Bucket.
+-- 2. Nome do bucket: "logos"
+-- 3. Marque a opção "Public bucket" (importante para que todos vejam a imagem).
+-- 4. Clique em "Save".
+-- 5. Adicione as políticas abaixo no botão "Add policy" do bucket logos:
+
+-- [POLÍTICA 1] Permitir leitura pública:
+-- Select bucket "logos" -> "New Policy" -> "Get started quickly" -> "Public access to all" -> "Save".
+
+-- [POLÍTICA 2] Permitir upload apenas para Admin:
+-- Select bucket "logos" -> "New Policy" -> "Create a policy from scratch"
+-- Name: "Admins can manage logos"
+-- Allowed operations: INSERT, UPDATE, DELETE
+-- Target roles: authenticated
+-- Policy definition:
+-- (storage.foldername(name))[1] = 'logo' OR true (Abaixo um exemplo mais rigoroso)
+-- auth.uid() in (select id from profiles where role = 'admin')
 ```
 
 ## 4. Insira do Administrador (Eduardo Gomes)
