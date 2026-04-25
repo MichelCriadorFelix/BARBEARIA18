@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Calendar, User, Scissors, LogOut, LayoutDashboard, DollarSign, ListTodo, Clock, Settings } from "lucide-react";
+import { Calendar, User, Scissors, LogOut, LayoutDashboard, DollarSign, ListTodo, Clock, Settings, Users } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ export function AppLayout() {
     { name: "Agenda", href: "/", icon: Calendar },
     { name: "Finanças / CRM", href: "/admin/finance", icon: DollarSign },
     { name: "Serviços", href: "/admin/services", icon: ListTodo },
+    { name: "Equipe / Admins", href: "/admin/users", icon: Users },
     { name: "Configurações", href: "/admin/settings", icon: Settings },
   ];
 

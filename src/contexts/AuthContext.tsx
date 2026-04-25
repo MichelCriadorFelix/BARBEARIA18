@@ -171,14 +171,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // clear immediately
       setUser(null);
       setProfile(null);
+      setIsLoading(true); // Show loading while signing out
       
       await supabase.auth.signOut();
       console.log("Supabase signOut completed");
       
-      window.location.replace('/login'); 
+      // Force reload to completely clear memory and redirect to login
+      window.location.href = '/login'; 
     } catch (error) {
       console.error("Error signing out:", error);
-      window.location.replace('/login');
+      window.location.href = '/login';
     }
   };
 

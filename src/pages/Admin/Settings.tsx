@@ -56,8 +56,8 @@ export function AdminSettings() {
     }
   }
 
-  async function clearAllAppointments() {
-    if (!confirm("TEM CERTEZA? Isso vai apagar TODOS os agendamentos e histórico permanentemente. Esta ação não pode ser desfeita.")) {
+  async function clearAllData() {
+    if (!confirm("TEM CERTEZA? Isso vai apagar TODOS os agendamentos, histórico e registros financeiros permanentemente. Esta ação não pode ser desfeita.")) {
       return;
     }
 
@@ -65,14 +65,21 @@ export function AdminSettings() {
       setIsDeleting(true);
       setMessage(null);
       
-      const { error } = await supabase
+      // Clear appointments first
+      const { error: errorApp } = await supabase
         .from('appointments')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Trick to delete all rows
+        .neq('id', '00000000-0000-0000-0000-000000000000');
 
-      if (error) throw error;
+      // Clear transactions
+      const { error: errorTrans } = await supabase
+        .from('transactions')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
 
-      setMessage({ type: "success", text: "Todos os agendamentos foram limpos com sucesso!" });
+      if (errorApp || errorTrans) throw errorApp || errorTrans;
+
+      setMessage({ type: "success", text: "Todos os dados foram limpos com sucesso!" });
     } catch (error: any) {
       console.error(error);
       setMessage({ type: "error", text: "Erro ao limpar dados. Tente novamente." });
@@ -133,11 +140,11 @@ export function AdminSettings() {
         </p>
 
         <button 
-          onClick={clearAllAppointments}
+          onClick={clearAllData}
           disabled={isDeleting}
           className="w-full md:w-auto bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {isDeleting ? "Limpando..." : "Limpar todos os agendamentos"}
+          {isDeleting ? "Limpando..." : "Limpar todos os dados do App"}
         </button>
       </div>
 
