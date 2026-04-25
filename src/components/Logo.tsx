@@ -33,8 +33,12 @@ export function Logo({ className = "w-10 h-10", iconClassName = "w-6 h-6" }: Log
 
   if (error || !logoUrl) {
     return (
-      <div className={`${className} bg-gradient-to-br from-amber-500 to-amber-700 rounded-lg flex items-center justify-center shadow-lg shadow-amber-900/20`}>
-        <Scissors className={`${iconClassName} text-white`} />
+      <div className={`${className} bg-black rounded-lg flex items-center justify-center border border-white/10`}>
+        <img 
+          src="https://cdn-icons-png.flaticon.com/512/2821/2821012.png" 
+          alt="Barbearia 18 Logo" 
+          className="w-full h-full object-contain p-1"
+        />
       </div>
     );
   }

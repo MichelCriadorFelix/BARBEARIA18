@@ -1,9 +1,10 @@
-const CACHE_NAME = 'b18-v3';
+const CACHE_NAME = 'b18-v4';
 const ASSETS_TO_CACHE = [
   '/',
+  '/?source=pwa',
   '/index.html',
   '/manifest.json',
-  'https://cdn-icons-png.flaticon.com/512/4829/4829731.png'
+  'https://cdn-icons-png.flaticon.com/512/2821/2821012.png'
 ];
 
 self.addEventListener('install', (event) => {
