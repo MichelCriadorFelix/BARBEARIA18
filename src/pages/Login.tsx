@@ -11,16 +11,18 @@ export function Login() {
     setLoading(true);
     setError(null);
     try {
+      const isIframe = window.self !== window.top;
+      
       const { data, error: signInError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.location.origin,
-          skipBrowserRedirect: true
+          skipBrowserRedirect: isIframe
         }
       });
       if (signInError) throw signInError;
       
-      if (data?.url) {
+      if (isIframe && data?.url) {
         const popup = window.open(data.url, 'oauth_popup', 'width=600,height=700');
         
         // Listen for auth state changes to close the popup once logged in

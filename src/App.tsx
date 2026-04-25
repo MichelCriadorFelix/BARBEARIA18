@@ -1,7 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { hasSupabaseKeys } from "@/lib/supabase";
+import { hasSupabaseKeys, supabase } from "@/lib/supabase";
 import { SetupSupabase } from "@/components/SetupSupabase";
 import { Login } from "@/pages/Login";
 import { AppLayout } from "@/components/Layout";
@@ -70,7 +70,20 @@ function HomeRouter() {
 export default function App() {
   React.useEffect(() => {
     if (window.opener && window.location.hash.includes('access_token')) {
-      window.close();
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          window.close();
+        }
+      });
+
+      // Fallback close timeout to avoid getting stuck if auth change event fires before we listen
+      setTimeout(() => {
+        window.close();
+      }, 2000);
+
+      return () => {
+        subscription.unsubscribe();
+      };
     }
   }, []);
 
