@@ -88,7 +88,7 @@ export function ClientBooking() {
   async function fetchConfirmedAppointment() {
     try {
       const { data, error } = await supabase
-        .from("agendamentos")
+        .from("appointments")
         .select("*, services(*)")
         .eq("client_id", profile?.id)
         .eq("status", "confirmed")
@@ -151,7 +151,7 @@ export function ClientBooking() {
       const { data: booked, error } = await supabase
         .from("appointments")
         .select("start_time, end_time")
-        .in("status", ["pending", "confirmed"])
+        .in("status", ["pending", "confirmed", "finished"])
         .gte("start_time", startRange)
         .lte("start_time", endRange);
 
@@ -189,14 +189,14 @@ export function ClientBooking() {
     const endTime = new Date(selectedSlot.getTime() + selectedService.duration * 60000);
 
     try {
-      // 1. Refresh booked agendamentos for the day immediately before checking
+      // 1. Refresh booked appointments for the day immediately before checking
       const startRange = startOfDay(selectedDate!).toISOString();
       const endRange = endOfDay(selectedDate!).toISOString();
 
       const { data: currentBooked, error: fetchError } = await supabase
         .from("appointments")
         .select("start_time, end_time")
-        .in("status", ["pending", "confirmed"])
+        .in("status", ["pending", "confirmed", "finished"])
         .gte("start_time", startRange)
         .lte("start_time", endRange);
 
