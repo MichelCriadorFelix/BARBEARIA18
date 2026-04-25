@@ -45,18 +45,26 @@ export function AdminFinance() {
   }, []);
 
   async function fetchData(showLoading = true) {
-    if (showLoading) setLoading(true);
-    // Get last 3 months starting from the 1st of 2 months ago
-    const startDate = format(startOfMonth(subMonths(new Date(), 2)), 'yyyy-MM-dd');
+    const isInitialLoad = transactions.length === 0;
+    if (showLoading || isInitialLoad) setLoading(true);
     
-    const { data, error } = await supabase
-      .from("transactions")
-      .select("*")
-      .gte("date", startDate)
-      .order("date", { ascending: false });
+    try {
+      // Get last 3 months starting from the 1st of 2 months ago
+      const startDate = format(startOfMonth(subMonths(new Date(), 2)), "yyyy-MM-dd");
       
-    if (!error && data) setTransactions(data);
-    setLoading(false);
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .gte("date", startDate)
+        .order("date", { ascending: false });
+        
+      if (error) throw error;
+      if (data) setTransactions(data);
+    } catch (err) {
+      console.error("Error fetching finance data:", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -159,7 +167,7 @@ export function AdminFinance() {
             <h3 className="text-white/40 font-medium">Receita (Mês)</h3>
           </div>
           <p className="text-3xl font-bold text-white">
-            {loading ? "..." : `R$ ${income.toFixed(2)}`}
+            {loading && transactions.length === 0 ? "..." : `R$ ${income.toFixed(2)}`}
           </p>
         </div>
         
@@ -169,9 +177,9 @@ export function AdminFinance() {
             <h3 className="text-white/40 font-medium">Custos Totais</h3>
           </div>
           <p className="text-3xl font-bold text-white">
-            {loading ? "..." : `R$ ${total_costs.toFixed(2)}`}
+            {loading && transactions.length === 0 ? "..." : `R$ ${total_costs.toFixed(2)}`}
           </p>
-          {!loading && <p className="text-xs text-white/40 mt-1">Fixos: R$ {fixed_costs.toFixed(2)} | Var: R$ {variable_costs.toFixed(2)}</p>}
+          {(transactions.length > 0) && <p className="text-xs text-white/40 mt-1">Fixos: R$ {fixed_costs.toFixed(2)} | Var: R$ {variable_costs.toFixed(2)}</p>}
         </div>
         
         <div className="bg-white/5 border border-white/10 p-5 rounded-2xl relative overflow-hidden backdrop-blur-lg">
@@ -181,7 +189,7 @@ export function AdminFinance() {
             <h3 className="text-white/40 font-medium">Lucro Líquido</h3>
           </div>
           <p className={`text-3xl font-bold relative z-10 ${profit >= 0 ? "text-amber-500" : "text-red-500"}`}>
-            {loading ? "..." : `R$ ${profit.toFixed(2)}`}
+            {loading && transactions.length === 0 ? "..." : `R$ ${profit.toFixed(2)}`}
           </p>
         </div>
       </div>

@@ -65,7 +65,9 @@ export function AdminAgenda() {
 
   async function fetchAgenda(showLoading = true) {
     try {
-      if (showLoading) setLoading(true);
+      const isInitialForDate = appointments.length === 0;
+      if (showLoading || isInitialForDate) setLoading(true);
+      
       const start = startOfDay(date).toISOString();
       const end = endOfDay(date).toISOString();
 
