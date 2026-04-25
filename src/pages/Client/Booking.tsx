@@ -166,21 +166,44 @@ export function ClientBooking() {
     setIsBooking(true);
     const endTime = new Date(selectedSlot.getTime() + selectedService.duration * 60000);
 
-    const { error } = await supabase.from("appointments").insert({
-      client_id: profile.id,
-      service_id: selectedService.id,
-      start_time: selectedSlot.toISOString(),
-      end_time: endTime.toISOString(),
-      status: "pending"
-    });
+    try {
+      // Final availability check to prevent race conditions
+      const { data: conflict, error: checkError } = await supabase
+        .from("appointments")
+        .select("id")
+        .in("status", ["pending", "confirmed"])
+        .gte("start_time", selectedSlot.toISOString())
+        .lt("start_time", endTime.toISOString()) // overlapping starts
+        .limit(1);
 
-    if (!error) {
-      setSuccess(true);
-    } else {
+      if (checkError) throw checkError;
+
+      if (conflict && conflict.length > 0) {
+        alert("Infelizmente este horário acabou de ser reservado por outra pessoa. Por favor, escolha outro.");
+        generateSlots(selectedDate!, selectedService.duration);
+        setIsBooking(false);
+        return;
+      }
+
+      const { error } = await supabase.from("appointments").insert({
+        client_id: profile.id,
+        service_id: selectedService.id,
+        start_time: selectedSlot.toISOString(),
+        end_time: endTime.toISOString(),
+        status: "pending"
+      });
+
+      if (!error) {
+        setSuccess(true);
+      } else {
+        throw error;
+      }
+    } catch (err) {
       alert("Erro ao agendar. Horário pode ter ficado indisponível.");
       generateSlots(selectedDate!, selectedService.duration);
+    } finally {
+      setIsBooking(false);
     }
-    setIsBooking(false);
   }
 
   const handleCopyPix = async () => {

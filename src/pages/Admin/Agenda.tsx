@@ -17,6 +17,22 @@ export function AdminAgenda() {
 
   useEffect(() => {
     fetchAgenda();
+
+    // Real-time listener for the agenda
+    const channel = supabase
+      .channel('admin_agenda_updates')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'appointments' 
+      }, () => {
+        fetchAgenda();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [date]);
 
   async function fetchAgenda() {
