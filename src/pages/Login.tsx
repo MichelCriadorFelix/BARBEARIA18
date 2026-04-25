@@ -11,33 +11,16 @@ export function Login() {
     setLoading(true);
     setError(null);
     try {
-      const isIframe = window.self !== window.top;
-      
-      const { data, error: signInError } = await supabase.auth.signInWithOAuth({
+      const { error: signInError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.location.origin,
-          skipBrowserRedirect: isIframe,
           queryParams: {
             prompt: 'select_account'
           }
         }
       });
       if (signInError) throw signInError;
-      
-      if (isIframe && data?.url) {
-        const popup = window.open(data.url, 'oauth_popup', 'width=600,height=700');
-        
-        // Listen for auth state changes to close the popup once logged in
-        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-          if (event === 'SIGNED_IN' && session) {
-            if (popup) {
-              popup.close();
-            }
-            authListener.subscription.unsubscribe();
-          }
-        });
-      }
     } catch (err: any) {
       setError(err.message || "Ocorreu um erro na autenticação com Google.");
       setLoading(false);
