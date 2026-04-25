@@ -79,8 +79,8 @@ export function Login() {
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-600 to-amber-400" />
         
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mb-4 transform rotate-3 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-            <Scissors className="w-8 h-8 text-amber-500" />
+          <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-4 transform rotate-3 shadow-[0_0_15px_rgba(245,158,11,0.2)] overflow-hidden border border-white/10">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-2xl font-bold tracking-tighter text-white">BARBEARIA 18</h1>
           <p className="text-sm text-white/40 mt-1">
