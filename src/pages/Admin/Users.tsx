@@ -38,7 +38,9 @@ export function AdminUsers() {
 
   async function toggleAdmin(id: string, currentRole: string) {
     try {
-      const newRole = currentRole === "admin" ? "user" : "admin";
+      const isCurrentlyAdmin = currentRole.toLowerCase() === "admin";
+      const newRole = isCurrentlyAdmin ? "user" : "admin";
+      
       const { error } = await supabase
         .from("profiles")
         .update({ role: newRole })
@@ -50,9 +52,14 @@ export function AdminUsers() {
         type: "success", 
         text: `Usuário ${newRole === 'admin' ? 'promovido a Admin' : 'rebaixado'} com sucesso!` 
       });
-      fetchUsers();
+      
+      // Refresh local list
+      await fetchUsers();
+      
+      // Clear message after 3 seconds
+      setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
-      setMessage({ type: "error", text: "Erro ao atualizar permissão: " + err.message });
+      setMessage({ type: "error", text: "Erro ao atualizar: Verifique se você executou o novo script SQL de permissões." });
     }
   }
 
@@ -97,14 +104,14 @@ export function AdminUsers() {
             <div key={user.id} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center justify-between group hover:border-amber-500/50 transition-colors">
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  user.role === 'admin' ? 'bg-amber-500/20 text-amber-500' : 'bg-white/5 text-white/20'
+                  user.role?.toLowerCase() === 'admin' ? 'bg-amber-500/20 text-amber-500' : 'bg-white/5 text-white/20'
                 }`}>
                   <UserIcon className="w-6 h-6" />
                 </div>
                 <div>
                   <h3 className="font-bold flex items-center gap-2">
                     {user.full_name}
-                    {user.role === 'admin' && (
+                    {user.role?.toLowerCase() === 'admin' && (
                       <span className="bg-amber-500 text-amber-950 text-[10px] uppercase font-black px-1.5 py-0.5 rounded">Admin</span>
                     )}
                   </h3>
@@ -115,12 +122,12 @@ export function AdminUsers() {
               <button 
                 onClick={() => toggleAdmin(user.id, user.role)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                  user.role === 'admin' 
+                  user.role?.toLowerCase() === 'admin' 
                     ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white' 
                     : 'bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white'
                 }`}
               >
-                {user.role === 'admin' ? (
+                {user.role?.toLowerCase() === 'admin' ? (
                   <><ShieldAlert className="w-4 h-4" /> Remover Admin</>
                 ) : (
                   <><Shield className="w-4 h-4" /> Tornar Admin</>

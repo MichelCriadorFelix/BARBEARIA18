@@ -79,7 +79,12 @@ export function AdminSettings() {
 
       if (errorApp || errorTrans) throw errorApp || errorTrans;
 
-      setMessage({ type: "success", text: "Todos os dados foram limpos com sucesso!" });
+      setMessage({ type: "success", text: "Todos os dados foram limpos com sucesso! Recarregando..." });
+      
+      // Delay for message visibility then reload
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (error: any) {
       console.error(error);
       setMessage({ type: "error", text: "Erro ao limpar dados. Tente novamente." });
