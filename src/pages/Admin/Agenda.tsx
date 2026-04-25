@@ -30,35 +30,41 @@ export function AdminAgenda() {
       })
       .subscribe();
 
-    // Fallback refresh every 30 seconds
+    // Fallback refresh every 60 seconds
     const interval = setInterval(() => {
-      if (!loading) fetchAgenda();
-    }, 30000);
+      fetchAgenda();
+    }, 60000);
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [date, loading]);
+  }, [date]);
 
   async function fetchAgenda() {
-    setLoading(true);
-    const start = startOfDay(date).toISOString();
-    const end = endOfDay(date).toISOString();
+    try {
+      setLoading(true);
+      const start = startOfDay(date).toISOString();
+      const end = endOfDay(date).toISOString();
 
-    const { data, error } = await supabase
-      .from("appointments")
-      .select(`
-        *,
-        profiles ( full_name, phone ),
-        services ( name, price, duration )
-      `)
-      .gte("start_time", start)
-      .lte("start_time", end)
-      .order("start_time", { ascending: true });
+      const { data, error } = await supabase
+        .from("appointments")
+        .select(`
+          *,
+          profiles ( full_name, phone ),
+          services ( name, price, duration )
+        `)
+        .gte("start_time", start)
+        .lte("start_time", end)
+        .order("start_time", { ascending: true });
 
-    if (!error && data) setAppointments(data);
-    setLoading(false);
+      if (error) throw error;
+      if (data) setAppointments(data);
+    } catch (err) {
+      console.error("Error fetching agenda:", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function updateStatus(id: string, status: string, servicePrice?: number, serviceName?: string, payment?: { method: string, changeDetails: string }) {

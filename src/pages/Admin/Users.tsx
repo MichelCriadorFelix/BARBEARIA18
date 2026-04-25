@@ -38,7 +38,7 @@ export function AdminUsers() {
 
   async function toggleAdmin(id: string, currentRole: string) {
     try {
-      const isCurrentlyAdmin = currentRole.toLowerCase() === "admin";
+      const isCurrentlyAdmin = currentRole?.toLowerCase() === "admin";
       const newRole = isCurrentlyAdmin ? "user" : "admin";
       
       const { error } = await supabase
@@ -59,6 +59,7 @@ export function AdminUsers() {
       // Clear message after 3 seconds
       setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
+      console.error("Error toggling admin:", err);
       setMessage({ type: "error", text: "Erro ao atualizar: Verifique se você executou o novo script SQL de permissões." });
     }
   }
