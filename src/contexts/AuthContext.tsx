@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(currentUser);
         
         if (currentUser) {
-          await fetchProfile(currentUser.id);
+          await fetchProfile(currentUser);
         } else {
           setIsLoading(false);
         }
@@ -74,17 +74,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // If user is present (login or refresh)
       setUser(newUser);
       
-      // Always fetch profile if we have a user to keep it fresh
-      // But only if we don't already have it or if it's a new ID
-      await fetchProfile(newUser.id);
+      // Pass the user object directly to avoid redundant getUser calls
+      await fetchProfile(newUser);
     });
 
     // Fallback de segurança para garantir que a UI não fique presa
     const fallback = setTimeout(() => {
-      // Don't force loading false if we have a user but no profile yet, 
-      // let the profile fetcher finish or the ProtectedRoute handle it.
-      if (isMounted && !user) setIsLoading(false);
-    }, 6000);
+      if (isMounted) setIsLoading(false);
+    }, 5000);
 
     return () => {
       isMounted = false;
@@ -93,7 +90,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (currentUser: User) => {
+    const userId = currentUser.id;
     try {
       // Usando maybeSingle para evitar a exceção PGRST116 e lidar amigavelmente com ausência de profile
       const { data, error } = await supabase
@@ -106,30 +104,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
       if (error) {
         console.error("Error fetching profile", error);
-        // Do not create a fallback if there's a genuine database error (like 401 JWT Expired)
-        // because that means the profile might exist but we just can't read it right now.
-        // Wait for token refresh or simply fail gracefully.
-        return;
+        // On error, still set a minimal profile to unblock UI
       }
       
       if (data) {
         setProfile(data as Profile);
       } else {
         console.warn("Profile not found in database. Setting fallback profile...");
-        const { data: userData } = await supabase.auth.getUser();
         
-        // If getUser also fails, it's extremely likely the token is invalid or expired.
-        if (!userData || !userData.user) {
-           console.error("Could not get user data. Token might be expired.");
-           return;
-        }
-
-        const email = userData.user.email || "";
-        const fallbackName = userData.user.user_metadata?.full_name || email?.split('@')[0] || "Usuário";
+        const email = currentUser.email || "";
+        const fallbackName = currentUser.user_metadata?.full_name || email?.split('@')[0] || "Usuário";
+        
+        // Owner detection for fallback only
+        const isOwner = email === "michelgeminicriador@gmail.com" || email === "felixecastroadv@gmail.com";
         
         const fallbackProfile: Profile = {
           id: userId,
-          role: "client",
+          role: isOwner ? "admin" : "client",
           full_name: fallbackName,
           phone: ""
         };
@@ -137,7 +128,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(fallbackProfile);
         
         // Use insert instead of upsert so we don't accidentally overwrite an existing profile
-        // due to RLS bugs or network races.
         Promise.resolve().then(async () => {
            const { error: insertErr } = await supabase.from("profiles").insert([fallbackProfile]);
            if (insertErr) console.warn("Failed to insert fallback profile (maybe it already exists)", insertErr);
@@ -145,8 +135,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error("Fatal error fetching profile:", error);
-      // Give them a volatile failsafe profile so they don't get stuck on the loading screen forever
-      setProfile({ id: userId, role: "client", full_name: "Erro na Conexão", phone: "" });
     } finally {
       setIsLoading(false);
     }
