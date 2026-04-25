@@ -66,9 +66,8 @@ export function InstallButton({ variant = "button" }: InstallButtonProps) {
     setIsVisible(false);
   };
 
-  if (!isVisible) return null;
-
   if (variant === "banner") {
+    if (!isVisible) return null;
     return (
       <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl flex items-center justify-between gap-4 mb-6 animate-in slide-in-from-top duration-500">
         <div className="flex items-center gap-3">
@@ -98,13 +97,17 @@ export function InstallButton({ variant = "button" }: InstallButtonProps) {
     );
   }
 
+  // Always show in sidebar unless already standalone
+  const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+  if (isStandalone) return null;
+
   return (
     <button
       onClick={handleInstallClick}
       className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-amber-950 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-amber-500/20"
     >
       <Download className="w-4 h-4" />
-      Instalar App
+      {deferredPrompt ? "Instalar App" : "Como Instalar"}
     </button>
   );
 }
