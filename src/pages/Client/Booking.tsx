@@ -119,37 +119,26 @@ export function ClientBooking() {
       setSelectedSlot(null);
       const durationMins = Number(durationStr) || 30;
       
-      // Limits: 08:00 to 20:00
       const slots: Date[] = [];
       let current = setMinutes(setHours(date, 8), 0);
       const end = setMinutes(setHours(date, 20), 0);
       
-      // Ajuste de fuso horário para comparação (Horário de Brasília)
-      // Se estivermos em um ambiente UTC, precisamos subtrair 3 horas do "now" do sistema
-      // para comparar corretamente com os horários locais de 08:00-20:00.
       const now = new Date();
-      // Se date-fns ou o sistema estiver operando em UTC puro:
-      const offset = now.getTimezoneOffset(); // 0 em ambientes UTC
+      const offset = now.getTimezoneOffset();
       const isUTC = offset === 0;
-      
-      // Criamos uma referência do momento atual "ajustado" para a realidade do usuário no Brasil
-      // Se isUTC, subtraímos 3 horas (180 min) para ter o horário de Brasília comparável.
       const nowAjusted = isUTC ? new Date(now.getTime() - (3 * 60 * 60 * 1000)) : now;
 
       while (isBefore(current, end)) {
-        // Se a data selecionada for hoje, só mostra horários que ainda não passaram
         if (isSameDay(date, nowAjusted)) {
           if (isBefore(nowAjusted, current)) {
             slots.push(new Date(current));
           }
         } else {
-          // Para dias futuros, mostra tudo
           slots.push(new Date(current));
         }
-        current = new Date(current.getTime() + durationMins * 60000);
+        current = new Date(current.getTime() + 30 * 60000); // Check slots every 30 mins regardless of duration
       }
 
-      // Verifica com o banco quais estão ocupados (conflitos simples)
       const startRange = startOfDay(date).toISOString();
       const endRange = endOfDay(date).toISOString();
       
@@ -165,9 +154,13 @@ export function ClientBooking() {
       const validSlots = slots.filter(slot => {
         const slotEnd = new Date(slot.getTime() + durationMins * 60000);
         
+        // Slot must end by 20:00
+        if (slotEnd > end) return false;
+
         const hasConflict = booked?.some((b: any) => {
           const bStart = new Date(b.start_time);
           const bEnd = new Date(b.end_time);
+          // Overlap condition: (StartA < EndB) and (EndA > StartB)
           return (slot < bEnd && slotEnd > bStart);
         });
 
@@ -190,19 +183,28 @@ export function ClientBooking() {
     const endTime = new Date(selectedSlot.getTime() + selectedService.duration * 60000);
 
     try {
-      // Final availability check to prevent race conditions
-      const { data: conflict, error: checkError } = await supabase
+      // 1. Refresh booked appointments for the day immediately before checking
+      const startRange = startOfDay(selectedDate!).toISOString();
+      const endRange = endOfDay(selectedDate!).toISOString();
+
+      const { data: currentBooked, error: fetchError } = await supabase
         .from("appointments")
-        .select("id")
+        .select("start_time, end_time")
         .in("status", ["pending", "confirmed"])
-        .gte("start_time", selectedSlot.toISOString())
-        .lt("start_time", endTime.toISOString()) // overlapping starts
-        .limit(1);
+        .gte("start_time", startRange)
+        .lte("start_time", endRange);
 
-      if (checkError) throw checkError;
+      if (fetchError) throw fetchError;
 
-      if (conflict && conflict.length > 0) {
-        alert("Infelizmente este horário acabou de ser reservado por outra pessoa. Por favor, escolha outro.");
+      // 2. Strict overlap verification
+      const hasConflict = currentBooked?.some((b: any) => {
+        const bStart = new Date(b.start_time);
+        const bEnd = new Date(b.end_time);
+        return (selectedSlot < bEnd && endTime > bStart);
+      });
+
+      if (hasConflict) {
+        alert("Infelizmente este horário acabou de ser reservado. Por favor, escolha outro.");
         generateSlots(selectedDate!, selectedService.duration);
         setIsBooking(false);
         return;
@@ -222,7 +224,8 @@ export function ClientBooking() {
         throw error;
       }
     } catch (err) {
-      alert("Erro ao agendar. Horário pode ter ficado indisponível.");
+      console.error("Booking error:", err);
+      alert("Erro ao agendar. O horário pode ter ficado indisponível.");
       generateSlots(selectedDate!, selectedService.duration);
     } finally {
       setIsBooking(false);
