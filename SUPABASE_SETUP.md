@@ -156,6 +156,12 @@ CREATE POLICY "Admin Gerenciar Tudo" ON storage.objects FOR ALL TO authenticated
 -- 5. Salve a alteração.
 -- Fazendo isso, o banco de dados vai "avisar" todos os celulares conectados sempre que um horário for ocupado!
 
+-- -----------------------------------------------------
+-- 7. LIMPEZA DE DADOS (OPCIONAL)
+-- -----------------------------------------------------
+-- Se quiser apagar todos os agendamentos de teste:
+-- DELETE FROM appointments;
+
 ```
 
 ## 4. Insira do Administrador (Eduardo Gomes)
