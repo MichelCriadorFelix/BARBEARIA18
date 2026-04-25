@@ -17,7 +17,10 @@ export function Login() {
         provider: 'google',
         options: {
           redirectTo: window.location.origin,
-          skipBrowserRedirect: isIframe
+          skipBrowserRedirect: isIframe,
+          queryParams: {
+            prompt: 'select_account'
+          }
         }
       });
       if (signInError) throw signInError;

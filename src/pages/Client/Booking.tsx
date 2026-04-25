@@ -51,10 +51,16 @@ export function ClientBooking() {
   }, [selectedDate, selectedService]);
 
   async function fetchServices() {
-    setLoadingServices(true);
-    const { data } = await supabase.from("services").select("*").eq("active", true).order("price", { ascending: true });
-    if (data) setServices(data);
-    setLoadingServices(false);
+    try {
+      setLoadingServices(true);
+      const { data, error } = await supabase.from("services").select("*").eq("active", true).order("price", { ascending: true });
+      if (error) throw error;
+      if (data) setServices(data);
+    } catch (e) {
+      console.error("Error fetching services:", e);
+    } finally {
+      setLoadingServices(false);
+    }
   }
 
   function generateDates() {
@@ -72,48 +78,56 @@ export function ClientBooking() {
   }
 
   async function generateSlots(date: Date, durationStr: number) {
-    setLoadingSlots(true);
-    setSelectedSlot(null);
-    const durationMins = Number(durationStr) || 30;
-    
-    // Limits: 08:00 to 20:00
-    const slots: Date[] = [];
-    let current = setMinutes(setHours(date, 8), 0);
-    const end = setMinutes(setHours(date, 20), 0);
-    const now = new Date();
-
-    while (isBefore(current, end)) {
-      if (isBefore(now, current)) {
-        slots.push(new Date(current));
-      }
-      current = new Date(current.getTime() + durationMins * 60000);
-    }
-
-    // Verifica com o banco quais estão ocupados (conflitos simples)
-    const startRange = startOfDay(date).toISOString();
-    const endRange = endOfDay(date).toISOString();
-    
-    const { data: booked } = await supabase
-      .from("appointments")
-      .select("start_time, end_time")
-      .in("status", ["pending", "confirmed"])
-      .gte("start_time", startRange)
-      .lte("start_time", endRange);
-
-    const validSlots = slots.filter(slot => {
-      const slotEnd = new Date(slot.getTime() + durationMins * 60000);
+    try {
+      setLoadingSlots(true);
+      setSelectedSlot(null);
+      const durationMins = Number(durationStr) || 30;
       
-      const hasConflict = booked?.some((b: any) => {
-        const bStart = new Date(b.start_time);
-        const bEnd = new Date(b.end_time);
-        return (slot < bEnd && slotEnd > bStart);
+      // Limits: 08:00 to 20:00
+      const slots: Date[] = [];
+      let current = setMinutes(setHours(date, 8), 0);
+      const end = setMinutes(setHours(date, 20), 0);
+      const now = new Date();
+
+      while (isBefore(current, end)) {
+        if (isBefore(now, current)) {
+          slots.push(new Date(current));
+        }
+        current = new Date(current.getTime() + durationMins * 60000);
+      }
+
+      // Verifica com o banco quais estão ocupados (conflitos simples)
+      const startRange = startOfDay(date).toISOString();
+      const endRange = endOfDay(date).toISOString();
+      
+      const { data: booked, error } = await supabase
+        .from("appointments")
+        .select("start_time, end_time")
+        .in("status", ["pending", "confirmed"])
+        .gte("start_time", startRange)
+        .lte("start_time", endRange);
+
+      if (error) throw error;
+
+      const validSlots = slots.filter(slot => {
+        const slotEnd = new Date(slot.getTime() + durationMins * 60000);
+        
+        const hasConflict = booked?.some((b: any) => {
+          const bStart = new Date(b.start_time);
+          const bEnd = new Date(b.end_time);
+          return (slot < bEnd && slotEnd > bStart);
+        });
+
+        return !hasConflict;
       });
 
-      return !hasConflict;
-    });
-
-    setAvailableSlots(validSlots);
-    setLoadingSlots(false);
+      setAvailableSlots(validSlots);
+    } catch (err) {
+      console.error("Error generating slots:", err);
+      setAvailableSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
   }
 
   async function handleBook() {
