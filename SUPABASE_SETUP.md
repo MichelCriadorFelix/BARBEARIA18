@@ -1,0 +1,129 @@
+# Configuração do Supabase (Atualizado)
+
+Para que o aplicativo funcione perfeitamente com autenticação, banco de dados e CRM da BARBEARIA 18.
+
+## 1. Crie o Projeto
+1. Acesse [Supabase.com](https://supabase.com/) e crie um novo projeto.
+2. Vá em **Project Settings -> API** e copie o `Project URL` e a `anon public key`.
+3. Adicione essas chaves no painel de Segredos (Secrets), Vercel ou no `.env` do projeto como `SUPABASE_URL` e `SUPABASE_ANON_KEY`.
+
+## 2. Ative o Autenticador do Google
+1. Ainda no Supabase, vá na aba **Authentication -> Providers** e clique em **Google**.
+2. Habilite a integração fornecendo seu **Client ID** e **Client Secret** (obtidos no Google Cloud Console).
+3. Certifique-se de configurar a URL de Callback fornecida lá dentro do Google Cloud Console.
+
+## 3. Execute o Script SQL
+Vá até a aba **SQL Editor** no painel do Supabase, crie uma nova query, cole o código abaixo e clique em **Run**:
+
+```sql
+-- Habilitar extensão de UUID
+create extension if not exists "uuid-ossp";
+
+-- 1. Tabela de Perfis
+create table profiles (
+  id uuid references auth.users on delete cascade primary key,
+  role text check (role in ('admin', 'client')) default 'client',
+  full_name text,
+  phone text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 2. Tabela de Serviços (Catálogo)
+create table services (
+  id uuid default uuid_generate_v4() primary key,
+  name text not null,
+  price numeric not null,
+  duration integer not null default 30, -- Em minutos, base do agendamento
+  active boolean default true,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 3. Tabela de Agendamentos
+create table appointments (
+  id uuid default uuid_generate_v4() primary key,
+  client_id uuid references profiles(id) not null,
+  service_id uuid references services(id) not null,
+  start_time timestamp with time zone not null,
+  end_time timestamp with time zone not null,
+  status text check (status in ('pending', 'confirmed', 'completed', 'cancelled')) default 'pending',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Habilitar o modo Realtime para atualizações em tempo real 
+alter publication supabase_realtime add table appointments;
+
+-- 4. Tabela de Transações (CRM Financeiro)
+create table transactions (
+  id uuid default uuid_generate_v4() primary key,
+  type text check (type in ('income', 'expense', 'fixed_cost', 'variable_cost')) not null,
+  amount numeric not null,
+  description text not null,
+  date date not null default current_date,
+  appointment_id uuid references appointments(id), -- Opcional, para faturamento de cortes
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- -----------------------------------------------------
+-- Trigger Automático: Criar perfil ao registrar usuário (Compatível com Google)
+-- -----------------------------------------------------
+create function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  insert into public.profiles (id, full_name, role)
+  values (
+    new.id, 
+    -- Resgatar o nome vindo do provider oauth (ex: Google)
+    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', 'Usuário'), 
+    'client'
+  );
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- -----------------------------------------------------
+-- Segurança Simples (RLS) para este App
+-- -----------------------------------------------------
+alter table profiles enable row level security;
+alter table services enable row level security;
+alter table appointments enable row level security;
+alter table transactions enable row level security;
+
+-- Todos os usuários logados podem ler o catálogo de serviços
+create policy "Read access on services for authenticated" on services for select to authenticated using (true);
+create policy "Admin can insert services" on services for all to authenticated using (
+  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+);
+
+-- Perfis: Podem ver todos os perfis e editar o seu
+create policy "Read profiles" on profiles for select to authenticated using (true);
+create policy "Update own profile" on profiles for update to authenticated using (auth.uid() = id);
+
+-- Agendamentos: Admin vê tudo, Cliente vê apenas os seus
+create policy "Read appointments" on appointments for select to authenticated using (
+  client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+);
+create policy "Insert appointments" on appointments for insert to authenticated with check (
+  client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+);
+create policy "Update appointments" on appointments for update to authenticated using (
+  client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+);
+
+-- Transações Financeiras: Somente Admin
+create policy "Admin transactions" on transactions for all to authenticated using (
+  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+);
+```
+
+## 4. Insira do Administrador (Eduardo Gomes)
+A primeira conta que você logar (mesmo sendo do Google) será criada como `client`. Para virar o barbeiro (admin), vá ao Banco de Dados no Supabase, abra a tabela `profiles` e altere a coluna `role` do seu usuário logado para `admin`.
+
+## 5. Deploy na Vercel
+Quando for criar seu Deploy pela Vercel no GitHub, certifique-se de adicionar `SUPABASE_URL` e `SUPABASE_ANON_KEY` nas Configurações de Ambient Variables do Vercel Dashboard.
