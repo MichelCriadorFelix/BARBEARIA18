@@ -71,11 +71,13 @@ export function ClientHistory() {
               <div className="mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-white/10 flex justify-end">
                 <div className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider",
-                  apt.status === 'pending' || apt.status === 'confirmed' ? "bg-amber-500/10 text-amber-500" :
+                  apt.status === 'pending' ? "bg-blue-500/10 text-blue-500" :
+                  apt.status === 'confirmed' ? "bg-amber-500/10 text-amber-500" :
                   apt.status === 'completed' ? "bg-green-500/10 text-green-500" : 
                   "bg-red-500/10 text-red-500"
                 )}>
-                  {apt.status === 'pending' || apt.status === 'confirmed' ? 'Agendado' :
+                  {apt.status === 'pending' ? 'Aguardando Aprovação' :
+                   apt.status === 'confirmed' ? 'Agendado' :
                    apt.status === 'completed' ? 'Concluído' : 'Cancelado'}
                 </div>
               </div>

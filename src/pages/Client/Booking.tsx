@@ -151,8 +151,8 @@ export function ClientBooking() {
           <CheckCircle className="w-10 h-10 text-green-500" />
         </div>
         <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-white">Agendamento Concluído!</h2>
-            <p className="text-white/60 max-w-md">Seu horário para {format(selectedSlot!, "dd/MM 'às' HH:mm")} foi reservado com sucesso.</p>
+            <h2 className="text-2xl font-bold text-white">Reserva Solicitada!</h2>
+            <p className="text-white/60 max-w-md">Sua solicitação de horário para {format(selectedSlot!, "dd/MM 'às' HH:mm")} foi enviada ao barbeiro. Aguarde a aprovação na aba Meus Cortes.</p>
         </div>
 
         <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-lg flex flex-col items-center mt-6">

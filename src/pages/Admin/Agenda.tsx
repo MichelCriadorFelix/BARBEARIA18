@@ -108,7 +108,23 @@ export function AdminAgenda() {
               </div>
 
               <div className="mt-4 md:mt-0 flex items-center gap-2 border-t md:border-t-0 border-white/10 pt-4 md:pt-0">
-                {apt.status === 'pending' || apt.status === 'confirmed' ? (
+                {apt.status === 'pending' && (
+                  <>
+                    <button
+                      onClick={() => updateStatus(apt.id, 'cancelled')}
+                      className="flex-1 md:flex-none px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                    >
+                      <XCircle className="w-4 h-4" /> Cancelar
+                    </button>
+                    <button
+                      onClick={() => updateStatus(apt.id, 'confirmed')}
+                      className="flex-1 md:flex-none px-4 py-2 bg-blue-500 text-blue-950 hover:bg-blue-600 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> Aprovar
+                    </button>
+                  </>
+                )}
+                {apt.status === 'confirmed' && (
                   <>
                     <button
                       onClick={() => updateStatus(apt.id, 'cancelled')}
@@ -123,7 +139,8 @@ export function AdminAgenda() {
                       <CheckCircle2 className="w-4 h-4" /> Finalizar
                     </button>
                   </>
-                ) : (
+                )}
+                {(apt.status === 'completed' || apt.status === 'cancelled') && (
                   <div className="px-4 py-2 rounded-lg font-bold text-sm bg-black/40 border border-white/10 backdrop-blur-md">
                     {apt.status === 'completed' ? <span className="text-green-500">Concluído</span> : <span className="text-red-500">Cancelado</span>}
                   </div>
