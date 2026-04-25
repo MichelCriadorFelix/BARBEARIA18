@@ -14,7 +14,7 @@ export function Logo({ className = "w-10 h-10", iconClassName = "w-6 h-6" }: Log
   useEffect(() => {
     async function fetchLogo() {
       try {
-        const { data } = supabase.storage.from("logos").getPublicUrl("logo.png");
+        const { data } = supabase.storage.from("documentsbarbearia").getPublicUrl("logo.png");
         if (data?.publicUrl) {
           // Verify if it exists
           const res = await fetch(data.publicUrl, { method: 'HEAD' });

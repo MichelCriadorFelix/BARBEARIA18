@@ -126,21 +126,20 @@ create policy "Admin transactions" on transactions for all to authenticated usin
 -- 5. STORAGE: Configuração da Logo
 -- -----------------------------------------------------
 -- 1. No Supabase, vá em Storage -> New Bucket.
--- 2. Nome do bucket: "logos"
+-- 2. Nome do bucket: "documentsbarbearia"
 -- 3. Marque a opção "Public bucket" (importante para que todos vejam a imagem).
 -- 4. Clique em "Save".
--- 5. Adicione as políticas abaixo no botão "Add policy" do bucket logos:
+-- 5. Adicione as políticas abaixo no botão "Add policy" do bucket documentsbarbearia:
 
 -- [POLÍTICA 1] Permitir leitura pública:
--- Select bucket "logos" -> "New Policy" -> "Get started quickly" -> "Public access to all" -> "Save".
+-- Select bucket "documentsbarbearia" -> "New Policy" -> "Get started quickly" -> "Public access to all" -> "Save".
 
 -- [POLÍTICA 2] Permitir upload apenas para Admin:
--- Select bucket "logos" -> "New Policy" -> "Create a policy from scratch"
--- Name: "Admins can manage logos"
+-- Select bucket "documentsbarbearia" -> "New Policy" -> "Create a policy from scratch"
+-- Name: "Admins can manage documents"
 -- Allowed operations: INSERT, UPDATE, DELETE
 -- Target roles: authenticated
 -- Policy definition:
--- (storage.foldername(name))[1] = 'logo' OR true (Abaixo um exemplo mais rigoroso)
 -- auth.uid() in (select id from profiles where role = 'admin')
 ```
 

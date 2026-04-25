@@ -13,7 +13,7 @@ export function AdminSettings() {
 
   async function fetchLogo() {
     try {
-      const { data } = supabase.storage.from("logos").getPublicUrl("logo.png");
+      const { data } = supabase.storage.from("documentsbarbearia").getPublicUrl("logo.png");
       if (data?.publicUrl) {
         // We check if the image actually exists by trying to fetch it
         const res = await fetch(data.publicUrl);
@@ -41,10 +41,10 @@ export function AdminSettings() {
       const filePath = `logo.png`; 
 
       // 1. Delete if exists (to overwrite reliably in Supabase Cache)
-      await supabase.storage.from("logos").remove([filePath]);
+      await supabase.storage.from("documentsbarbearia").remove([filePath]);
 
       // 2. Upload
-      const { error: uploadError } = await supabase.storage.from("logos").upload(filePath, file, {
+      const { error: uploadError } = await supabase.storage.from("documentsbarbearia").upload(filePath, file, {
         upsert: true,
         cacheControl: "0"
       });
@@ -115,7 +115,7 @@ export function AdminSettings() {
           Dica de Instalação
         </h3>
         <p className="text-sm text-white/60 leading-relaxed">
-          Certifique-se de que o bucket <strong>"logos"</strong> está criado no seu Supabase Storage e configurado como <strong>Público</strong>. Sem isso, a imagem não será exibida corretamente.
+          Certifique-se de que o bucket <strong>"documentsbarbearia"</strong> está criado no seu Supabase Storage e configurado como <strong>Público</strong>. Sem isso, a imagem não será exibida corretamente.
         </p>
       </div>
     </div>
