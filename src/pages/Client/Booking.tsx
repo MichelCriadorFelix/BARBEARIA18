@@ -372,7 +372,7 @@ export function ClientBooking() {
       <div className="space-y-3">
         <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
           <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-500/50">1</div>
-          Escolha o Serviço
+          Escolha o seu corte abaixo:
         </h2>
         {loadingServices ? (
           <div className="text-white/40 text-sm">Carregando serviços...</div>
