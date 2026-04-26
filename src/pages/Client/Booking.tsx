@@ -430,10 +430,13 @@ export function ClientBooking() {
       {/* Passo 3: Horário */}
       {selectedService && selectedDate && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
-            <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-500/50">3</div>
-            Horários Livres
-          </h2>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
+              <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-500/50">3</div>
+              Horários Livres
+            </h2>
+            <p className="text-xs text-white/40">Horários aguardando aprovação não são exibidos.</p>
+          </div>
           
           {loadingSlots ? (
              <div className="text-white/40 text-sm">Buscando horários disponíveis...</div>
