@@ -6,8 +6,10 @@ import { CheckCircle2, ChevronLeft, ChevronRight, Clock, User, XCircle, DollarSi
 import { cn } from "@/lib/utils";
 
 export function AdminAgenda() {
+  const [activeTab, setActiveTab] = useState<'agendamentos' | 'historico'>('agendamentos');
   const [date, setDate] = useState(new Date());
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [agendamentos, setAgendamentos] = useState<any[]>([]);
+  const [historico, setHistorico] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // States for finishing an appointment
@@ -25,7 +27,7 @@ export function AdminAgenda() {
   const [submittingWalkIn, setSubmittingWalkIn] = useState(false);
 
   useEffect(() => {
-    fetchAgenda(true);
+    fetchData(true);
     fetchServices();
 
     // Real-time listener for the agenda
@@ -36,20 +38,20 @@ export function AdminAgenda() {
         schema: 'public', 
         table: 'appointments' 
       }, () => {
-        fetchAgenda(false);
+        fetchData(false);
       })
       .subscribe();
 
     // Fallback refresh every 60 seconds
     const interval = setInterval(() => {
-      fetchAgenda(false);
+      fetchData(false);
     }, 60000);
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [date]);
+  }, [date, activeTab]);
 
   async function fetchServices() {
     try {
@@ -63,29 +65,45 @@ export function AdminAgenda() {
     }
   }
 
-  async function fetchAgenda(showLoading = true) {
+  async function fetchData(showLoading = true) {
     try {
-      const isInitialForDate = appointments.length === 0;
-      if (showLoading || isInitialForDate) setLoading(true);
+      if (showLoading) setLoading(true);
       
-      const start = startOfDay(date).toISOString();
-      const end = endOfDay(date).toISOString();
+      if (activeTab === 'agendamentos') {
+        const { data, error } = await supabase
+          .from("appointments")
+          .select(`
+            *,
+            profiles ( full_name, phone ),
+            services ( name, price, duration )
+          `)
+          .in("status", ["pending", "confirmed"])
+          .gte("start_time", startOfDay(new Date()).toISOString()) // From today onwards
+          .order("start_time", { ascending: true });
 
-      const { data, error } = await supabase
-        .from("appointments")
-        .select(`
-          *,
-          profiles ( full_name, phone ),
-          services ( name, price, duration )
-        `)
-        .gte("start_time", start)
-        .lte("start_time", end)
-        .order("start_time", { ascending: true });
+        if (error) throw error;
+        if (data) setAgendamentos(data);
+      } else {
+        const start = startOfDay(date).toISOString();
+        const end = endOfDay(date).toISOString();
 
-      if (error) throw error;
-      if (data) setAppointments(data);
+        const { data, error } = await supabase
+          .from("appointments")
+          .select(`
+            *,
+            profiles ( full_name, phone ),
+            services ( name, price, duration )
+          `)
+          .in("status", ["completed", "cancelled"])
+          .gte("start_time", start)
+          .lte("start_time", end)
+          .order("start_time", { ascending: true });
+
+        if (error) throw error;
+        if (data) setHistorico(data);
+      }
     } catch (err) {
-      console.error("Error fetching agenda:", err);
+      console.error("Error fetching data:", err);
     } finally {
       setLoading(false);
     }
@@ -109,7 +127,7 @@ export function AdminAgenda() {
     }
 
     await supabase.from("appointments").update({ status }).eq("id", id);
-    fetchAgenda();
+    fetchData();
   }
 
   async function confirmCompletion(e: React.FormEvent) {
@@ -200,8 +218,8 @@ export function AdminAgenda() {
       
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Agenda Diária</h1>
-          <p className="text-white/40 text-sm">Controle de horários e cortes.</p>
+          <h1 className="text-2xl font-bold text-white">Dashboard do Barbeiro</h1>
+          <p className="text-white/40 text-sm">Controle de agendamentos e histórico.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -212,31 +230,50 @@ export function AdminAgenda() {
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Atendimento Extra</span>
           </button>
-
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl p-1 backdrop-blur-lg ml-2">
-            <button onClick={() => setDate(subDays(date, 1))} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-              <ChevronLeft className="w-5 h-5 text-white/40" />
-            </button>
-            <div className="font-medium min-w-[140px] text-center capitalize text-white">
-              {format(date, "EEEE, dd 'de' MMM", { locale: ptBR })}
-            </div>
-            <button onClick={() => setDate(addDays(date, 1))} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-              <ChevronRight className="w-5 h-5 text-white/40" />
-            </button>
-          </div>
         </div>
       </div>
 
+      <div className="flex gap-2">
+        <button
+          onClick={() => setActiveTab('agendamentos')}
+          className={cn("flex-1 py-3 text-sm font-bold rounded-xl transition-colors", activeTab === 'agendamentos' ? "bg-amber-500 text-amber-950" : "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10")}
+        >
+          Agendamentos
+        </button>
+        <button
+          onClick={() => setActiveTab('historico')}
+          className={cn("flex-1 py-3 text-sm font-bold rounded-xl transition-colors", activeTab === 'historico' ? "bg-amber-500 text-amber-950" : "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10")}
+        >
+          Cortes Realizados
+        </button>
+      </div>
+
+      {activeTab === 'historico' && (
+        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-2 backdrop-blur-lg mb-4">
+          <button onClick={() => setDate(subDays(date, 1))} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+            <ChevronLeft className="w-5 h-5 text-white/40" />
+          </button>
+          <div className="font-medium text-center capitalize text-white">
+            {format(date, "EEEE, dd 'de' MMM", { locale: ptBR })}
+          </div>
+          <button onClick={() => setDate(addDays(date, 1))} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+            <ChevronRight className="w-5 h-5 text-white/40" />
+          </button>
+        </div>
+      )}
+
       <div className="space-y-3">
         {loading ? (
-          <div className="text-center py-10 text-white/40">Buscando horários...</div>
-        ) : appointments.length === 0 ? (
+          <div className="text-center py-10 text-white/40">Buscando informações...</div>
+        ) : (activeTab === 'agendamentos' ? agendamentos : historico).length === 0 ? (
           <div className="text-center py-16 bg-white/5 border border-dashed border-white/10 rounded-2xl backdrop-blur-lg">
             <CalendarIcon />
-            <p className="mt-4 text-white/40 font-medium">Nenhum agendamento para este dia.</p>
+            <p className="mt-4 text-white/40 font-medium">
+              {activeTab === 'agendamentos' ? "Nenhum agendamento pendente." : "Nenhum corte realizado neste dia."}
+            </p>
           </div>
         ) : (
-          appointments.map((apt) => (
+          (activeTab === 'agendamentos' ? agendamentos : historico).map((apt) => (
             <div key={apt.id} className={cn(
               "flex flex-col md:flex-row md:items-center justify-between p-5 rounded-2xl border transition-all",
               apt.status === 'completed' ? "bg-white/5 border-white/10 opacity-70 backdrop-blur-lg" :
@@ -245,6 +282,9 @@ export function AdminAgenda() {
             )}>
               <div className="flex items-start gap-4">
                 <div className="bg-black/40 p-3 rounded-xl border border-white/10 flex flex-col items-center justify-center min-w-[80px] backdrop-blur-md">
+                  {activeTab === 'agendamentos' && (
+                     <span className="text-white/40 text-xs mb-1 font-medium">{format(new Date(apt.start_time), "dd/MM")}</span>
+                  )}
                   <Clock className="w-5 h-5 text-amber-500 mb-1" />
                   <span className="font-bold text-white">{format(new Date(apt.start_time), "HH:mm")}</span>
                 </div>
