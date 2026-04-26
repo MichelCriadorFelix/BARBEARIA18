@@ -1,25 +1,30 @@
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
+import { defineConfig, loadEnv } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import path from 'path'
 
-export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
+export default defineConfig(({ mode }) => {
+  // Carrega TODAS as variáveis de ambiente, incluindo sem prefixo VITE_
+  const env = loadEnv(mode, process.cwd(), '')
+
   return {
-    plugins: [react(), tailwindcss()],
-    envPrefix: ['SUPABASE_', 'GEMINI_'],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
+    plugins: [
+      react(),
+      tailwindcss(),
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
       },
     },
-    server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
+    // Injeta as variáveis sem prefixo VITE_ no browser via define
+    define: {
+      'import.meta.env.SUPABASE_URL': JSON.stringify(env.SUPABASE_URL),
+      'import.meta.env.SUPABASE_ANON_KEY': JSON.stringify(env.SUPABASE_ANON_KEY),
     },
-  };
-});
+    server: {
+      port: 3000,
+      host: '0.0.0.0',
+    },
+  }
+})

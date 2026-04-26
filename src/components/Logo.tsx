@@ -35,7 +35,7 @@ export function Logo({ className = "w-10 h-10", iconClassName = "w-6 h-6" }: Log
     return (
       <div className={`${className} bg-black rounded-lg flex items-center justify-center border border-white/10`}>
         <img 
-          src="https://cdn-icons-png.flaticon.com/512/2821/2821012.png" 
+          src="/icon.svg" 
           alt="Barbearia 18 Logo" 
           className="w-full h-full object-contain p-1"
         />

@@ -49,13 +49,21 @@ import { AdminServices } from "@/pages/Admin/Services";
 import { AdminSettings } from "@/pages/Admin/Settings";
 import { AdminUsers } from "@/pages/Admin/Users";
 
-function ProtectedRoute({ children, adminOnly = false, superAdminOnly = false }: { children: React.ReactNode, adminOnly?: boolean, superAdminOnly?: boolean }) {
-  const { user, profile, isLoading } = useAuth();
-  
+function ProtectedRoute({
+  children,
+  adminOnly = false,
+  superAdminOnly = false,
+}: {
+  children: React.ReactNode;
+  adminOnly?: boolean;
+  superAdminOnly?: boolean;
+}) {
+  const { user, profile, isLoading, isSuperAdmin } = useAuth();
+
   if (isLoading) {
     return <div className="min-h-screen bg-[#050505] flex items-center justify-center text-amber-500">Carregando...</div>;
   }
-  
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }
@@ -70,39 +78,37 @@ function ProtectedRoute({ children, adminOnly = false, superAdminOnly = false }:
     return () => clearInterval(interval);
   }, [user, profile]);
 
-  // Wait for profile to load if user exists
   if (user && !profile) {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-4">
-         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500 mb-4"></div>
-         <p className="text-white text-center">
-            {profileLoadWait > 5 ? "Demorando mais que o esperado para carregar o perfil..." : "Carregando perfil..."}
-         </p>
-         {profileLoadWait > 10 && (
-           <div className="mt-8 flex flex-col items-center gap-4 animate-in fade-in">
-             <p className="text-white/50 text-sm max-w-sm text-center">
-               Se a tela estiver travada, o banco de dados pode estar indisponível ou a conexão falhou. 
-             </p>
-             <button 
-               onClick={() => {
-                 window.location.replace('/login');
-               }}
-               className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-red-500/20 hover:text-red-400 transition-colors"
-             >
-               Voltar para Login
-             </button>
-           </div>
-         )}
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500 mb-4"></div>
+        <p className="text-white text-center">
+          {profileLoadWait > 5 ? "Demorando mais que o esperado para carregar o perfil..." : "Carregando perfil..."}
+        </p>
+        {profileLoadWait > 10 && (
+          <div className="mt-8 flex flex-col items-center gap-4 animate-in fade-in">
+            <p className="text-white/50 text-sm max-w-sm text-center">
+              Se a tela estiver travada, o banco de dados pode estar indisponível ou a conexão falhou.
+            </p>
+            <button
+              onClick={() => window.location.replace('/login')}
+              className="px-6 py-2 bg-white/10 text-white rounded-xl hover:bg-red-500/20 hover:text-red-400 transition-colors"
+            >
+              Voltar para Login
+            </button>
+          </div>
+        )}
       </div>
     );
   }
 
-  // Se a rota for só de admin e o usuario logou e tem info, mas não é admin, manda para home de cliente
+  // Admin comum tenta acessar rota só de admin
   if (adminOnly && profile && profile.role !== "admin") {
     return <Navigate to="/" replace />;
   }
 
-  if (superAdminOnly && profile && profile.full_name?.toLowerCase() !== "michel santos") {
+  // Rota de superAdmin — verificação por EMAIL via isSuperAdmin (nunca por nome)
+  if (superAdminOnly && !isSuperAdmin) {
     return <Navigate to="/" replace />;
   }
 
@@ -115,32 +121,32 @@ function RoutesRenderer() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-      
+
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-        {/* Roteamento dinâmico baseado no cargo acontece dentro do AppLayout, mas podemos ter rotas que servem aos dois, ou renderizar conforme a role */}
         <Route path="/" element={<HomeRouter />} />
-        
+
         {/* Client Routes */}
         <Route path="/history" element={<ClientHistory />} />
 
         {/* Admin Routes */}
         <Route path="/admin/finance" element={<ProtectedRoute adminOnly><AdminFinance /></ProtectedRoute>} />
         <Route path="/admin/services" element={<ProtectedRoute adminOnly><AdminServices /></ProtectedRoute>} />
-        <Route path="/admin/users" element={<ProtectedRoute superAdminOnly><AdminUsers /></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminSettings /></ProtectedRoute>} />
+
+        {/* SuperAdmin only — aba Equipe/Admins — só Michel Santos */}
+        <Route path="/admin/users" element={<ProtectedRoute superAdminOnly><AdminUsers /></ProtectedRoute>} />
       </Route>
     </Routes>
   );
 }
 
-// Router component que decide qual "Home" mostrar baseado no perfil
 function HomeRouter() {
   const { profile } = useAuth();
-  
+
   if (profile?.role === "admin") {
     return <AdminAgenda />;
   }
-  
+
   return <ClientBooking />;
 }
 
@@ -153,7 +159,6 @@ export default function App() {
         }
       });
 
-      // Fallback close timeout to avoid getting stuck if auth change event fires before we listen
       setTimeout(() => {
         window.close();
       }, 2000);

@@ -2,17 +2,22 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
 
+// Email do superAdmin — único com acesso total (aba Equipe/Admins)
+const SUPER_ADMIN_EMAIL = "michelgeminicriador@gmail.com";
+
 interface Profile {
   id: string;
   role: "admin" | "user" | "client";
   full_name: string;
   phone: string;
+  email?: string; // guardamos o email no perfil para checar superAdmin
 }
 
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
+  isSuperAdmin: boolean; // novo campo — true só para Michel
   signOut: () => Promise<void>;
 }
 
@@ -20,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   isLoading: true,
+  isSuperAdmin: false,
   signOut: async () => {},
 });
 
@@ -30,32 +36,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // isSuperAdmin é calculado direto do email autenticado pelo Google/Supabase
+  // Nunca depende de nome ou campo editável no banco
+  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
+
   useEffect(() => {
     let isMounted = true;
 
-    // Check active sessions and sets the user
     const checkUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!isMounted) return;
-        
+
         const currentUser = session?.user ?? null;
         setUser(currentUser);
-        
+
         if (currentUser) {
-          // Set initial fallback while fetching
           const email = currentUser.email || "";
           const fallbackName = currentUser.user_metadata?.full_name || email.split('@')[0] || "Usuário";
-          const isOwner = email === "michelgeminicriador@gmail.com" || email === "felixecastroadv@gmail.com";
-          
+          const isOwner = email === SUPER_ADMIN_EMAIL;
+
           setProfile({
             id: currentUser.id,
             role: isOwner ? "admin" : "user",
             full_name: fallbackName,
-            phone: ""
+            phone: "",
+            email,
           });
           setIsLoading(false);
-          
+
           await fetchProfile(currentUser);
         } else {
           setIsLoading(false);
@@ -65,18 +74,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     };
-    
+
     checkUser();
 
-    // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth Event:", event, "Session UID:", session?.user?.id);
-      
+
       if (!isMounted) return;
-      
+
       const newUser = session?.user ?? null;
-      
-      // If user signed out
+
       if (!newUser) {
         setUser(null);
         setProfile(null);
@@ -85,25 +92,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setUser(newUser);
-      
-      // Unblock UI immediately with a temporary profile
+
       const email = newUser.email || "";
       const fallbackName = newUser.user_metadata?.full_name || email.split('@')[0] || "Usuário";
-      const isOwner = email === "michelgeminicriador@gmail.com" || email === "felixecastroadv@gmail.com";
-      
+      const isOwner = email === SUPER_ADMIN_EMAIL;
+
       setProfile({
         id: newUser.id,
         role: isOwner ? "admin" : "user",
         full_name: fallbackName,
-        phone: ""
+        phone: "",
+        email,
       });
       setIsLoading(false);
-      
-      // Then try to "upgrade" it with real data from DB if available
+
       fetchProfile(newUser);
     });
 
-    // Fallback de segurança para garantir que a UI não fique presa
     const fallback = setTimeout(() => {
       if (isMounted) setIsLoading(false);
     }, 5000);
@@ -118,44 +123,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchProfile = async (currentUser: User) => {
     const userId = currentUser.id;
     try {
-      // Usando maybeSingle para evitar a exceção PGRST116 e lidar amigavelmente com ausência de profile
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
         .maybeSingle();
-        
+
       console.log("Fetch profile result for", userId, { data, error });
-        
+
       if (error) {
         console.error("Error fetching profile", error);
-        // On error, still set a minimal profile to unblock UI
       }
-      
+
       if (data) {
-        setProfile(data as Profile);
+        // Sempre preservamos o email real do auth, nunca do banco
+        setProfile({ ...data as Profile, email: currentUser.email || "" });
       } else {
         console.warn("Profile not found in database. Setting fallback profile...");
-        
+
         const email = currentUser.email || "";
         const fallbackName = currentUser.user_metadata?.full_name || email?.split('@')[0] || "Usuário";
-        
-        // Owner detection for fallback only
-        const isOwner = email === "michelgeminicriador@gmail.com" || email === "felixecastroadv@gmail.com";
-        
+        const isOwner = email === SUPER_ADMIN_EMAIL;
+
         const fallbackProfile: Profile = {
           id: userId,
           role: isOwner ? "admin" : "user",
           full_name: fallbackName,
-          phone: ""
+          phone: "",
+          email,
         };
-        
+
         setProfile(fallbackProfile);
-        
-        // Use insert instead of upsert so we don't accidentally overwrite an existing profile
+
         Promise.resolve().then(async () => {
-           const { error: insertErr } = await supabase.from("profiles").insert([fallbackProfile]);
-           if (insertErr) console.warn("Failed to insert fallback profile (maybe it already exists)", insertErr);
+          const { error: insertErr } = await supabase.from("profiles").insert([{
+            id: fallbackProfile.id,
+            role: fallbackProfile.role,
+            full_name: fallbackProfile.full_name,
+            phone: fallbackProfile.phone,
+          }]);
+          if (insertErr) console.warn("Failed to insert fallback profile (maybe it already exists)", insertErr);
         });
       }
     } catch (error) {
@@ -168,16 +175,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       console.log("Signing out user inside AuthContext...");
-      // clear immediately
       setUser(null);
       setProfile(null);
-      setIsLoading(true); // Show loading while signing out
-      
+      setIsLoading(true);
+
       await supabase.auth.signOut();
       console.log("Supabase signOut completed");
-      
-      // Force reload to completely clear memory and redirect to login
-      window.location.href = '/login'; 
+
+      window.location.href = '/login';
     } catch (error) {
       console.error("Error signing out:", error);
       window.location.href = '/login';
@@ -185,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, isLoading, signOut }}>
+    <AuthContext.Provider value={{ user, profile, isLoading, isSuperAdmin, signOut }}>
       {children}
     </AuthContext.Provider>
   );

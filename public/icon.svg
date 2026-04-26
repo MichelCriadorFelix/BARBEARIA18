@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e0e06"/>
+      <stop offset="100%" style="stop-color:#0d0704"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f7d060"/>
+      <stop offset="50%" style="stop-color:#d4a017"/>
+      <stop offset="100%" style="stop-color:#a87010"/>
+    </linearGradient>
+    <linearGradient id="goldGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f7d060"/>
+      <stop offset="50%" style="stop-color:#d4a017"/>
+      <stop offset="100%" style="stop-color:#a87010"/>
+    </linearGradient>
+    <linearGradient id="bladeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#c0c0c0"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="textShadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000000" flood-opacity="0.8"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="90" fill="url(#bgGrad)"/>
+  <rect width="512" height="512" rx="90" fill="none" stroke="#3d2010" stroke-width="3" opacity="0.5"/>
+
+  <!-- Navalha esquerda -->
+  <g transform="translate(256, 138) rotate(-38)">
+    <rect x="60" y="-10" width="80" height="20" rx="8" fill="url(#goldGrad)"/>
+    <rect x="130" y="-8" width="20" height="16" rx="4" fill="#8B5E0A"/>
+    <path d="M-100,-7 L65,-7 L62,0 L65,7 L-100,7 L-105,0 Z" fill="url(#bladeGrad)"/>
+    <line x1="-90" y1="-3" x2="55" y2="-3" stroke="white" stroke-width="1.5" opacity="0.6"/>
+  </g>
+
+  <!-- Navalha direita -->
+  <g transform="translate(256, 138) rotate(38)">
+    <rect x="60" y="-10" width="80" height="20" rx="8" fill="url(#goldGrad2)"/>
+    <rect x="130" y="-8" width="20" height="16" rx="4" fill="#8B5E0A"/>
+    <path d="M-100,-7 L65,-7 L62,0 L65,7 L-100,7 L-105,0 Z" fill="url(#bladeGrad)"/>
+    <line x1="-90" y1="-3" x2="55" y2="-3" stroke="white" stroke-width="1.5" opacity="0.6"/>
+  </g>
+
+  <!-- Bigode esquerdo -->
+  <path d="M145,218 C160,200 195,200 228,215 C210,228 178,230 155,224 Z" fill="url(#goldGrad)" filter="url(#glow)"/>
+  <!-- Bigode direito -->
+  <path d="M367,218 C352,200 317,200 284,215 C302,228 334,230 357,224 Z" fill="url(#goldGrad2)" filter="url(#glow)"/>
+  <ellipse cx="256" cy="218" rx="22" ry="10" fill="#a87010"/>
+  <ellipse cx="256" cy="216" rx="14" ry="6" fill="#c8922a"/>
+
+  <!-- Escudo -->
+  <path d="M148,240 L148,226 L168,226" fill="none" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M364,240 L364,226 L344,226" fill="none" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round"/>
+  <line x1="148" y1="240" x2="148" y2="360" stroke="url(#goldGrad)" stroke-width="4"/>
+  <line x1="364" y1="240" x2="364" y2="360" stroke="url(#goldGrad2)" stroke-width="4"/>
+  <path d="M148,360 L256,415 L364,360" fill="none" stroke="url(#goldGrad)" stroke-width="4" stroke-linejoin="round"/>
+
+  <!-- BARBEARIA -->
+  <text x="256" y="302"
+    font-family="Georgia, serif"
+    font-size="52"
+    font-weight="900"
+    fill="white"
+    text-anchor="middle"
+    letter-spacing="2"
+    filter="url(#textShadow)">BARBEARIA</text>
+
+  <!-- 18 -->
+  <text x="256" y="368"
+    font-family="Georgia, serif"
+    font-size="72"
+    font-weight="900"
+    fill="url(#goldGrad)"
+    text-anchor="middle"
+    letter-spacing="6"
+    filter="url(#glow)">18</text>
+
+  <!-- Navalhas pequenas embaixo -->
+  <g transform="translate(256, 400) rotate(-32) scale(0.55)">
+    <rect x="55" y="-8" width="65" height="16" rx="6" fill="url(#goldGrad)"/>
+    <path d="M-85,-6 L60,-6 L57,0 L60,6 L-85,6 L-90,0 Z" fill="url(#goldGrad)"/>
+  </g>
+  <g transform="translate(256, 400) rotate(32) scale(0.55)">
+    <rect x="55" y="-8" width="65" height="16" rx="6" fill="url(#goldGrad2)"/>
+    <path d="M-85,-6 L60,-6 L57,0 L60,6 L-85,6 L-90,0 Z" fill="url(#goldGrad2)"/>
+  </g>
+
+  <!-- Pincel -->
+  <ellipse cx="256" cy="435" rx="12" ry="16" fill="url(#goldGrad)" opacity="0.85"/>
+  <rect x="250" y="447" width="12" height="8" rx="3" fill="#8B5E0A"/>
+  <ellipse cx="256" cy="448" rx="8" ry="4" fill="#c8922a"/>
+</svg>
