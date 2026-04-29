@@ -96,8 +96,8 @@ export function AdminFinance() {
     try {
       const { data: appointments } = await supabase
         .from("appointments")
-        .select("*, services(*)")
-        .eq("barbershop_id", profile.barbershop_id)
+        .select("*, services!inner(*), profiles(full_name)")
+        .eq("services.barbershop_id", profile.barbershop_id)
         .eq("status", "completed");
 
       if (!appointments || appointments.length === 0) {
@@ -123,8 +123,8 @@ export function AdminFinance() {
         barbershop_id: profile.barbershop_id,
         type: "income",
         amount: a.services?.price || 0,
-        description: `Corte Concluído: ${a.client_name || "Cliente"} (${a.services?.name || "Serviço"})`,
-        date: a.date,
+        description: `Corte Concluído: ${a.profiles?.full_name || "Cliente"} (${a.services?.name || "Serviço"})`,
+        date: format(new Date(a.start_time), "yyyy-MM-dd"),
         appointment_id: a.id
       }));
 

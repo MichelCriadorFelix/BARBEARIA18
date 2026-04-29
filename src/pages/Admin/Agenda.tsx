@@ -57,7 +57,14 @@ export function AdminAgenda() {
 
   async function fetchServices() {
     try {
-      const { data } = await supabase.from("services").select("*").order("name");
+      if (!profile?.barbershop_id) return;
+      
+      const { data } = await supabase
+        .from("services")
+        .select("*")
+        .eq("barbershop_id", profile.barbershop_id)
+        .order("name");
+        
       if (data) {
         setServices(data);
         if (data.length > 0) setWalkInServiceId(data[0].id);
