@@ -83,10 +83,6 @@ export function AdminFinance() {
         
       if (error) throw error;
       if (data) setTransactions(data);
-
-      // Lógica de Despesas Fixas Recorrentes:
-      // Se estamos no mês atual e não há custos fixos, mas no mês anterior havia, perguntamos ou importamos.
-      // Para simplificar, vamos habilitar um botão de "Importar Custos do Mês Anterior" se o mês estiver vazio de fixos.
     } catch (err) {
       console.error("Error fetching finance data:", err);
     } finally {
@@ -98,7 +94,6 @@ export function AdminFinance() {
     if (!profile?.barbershop_id) return;
     setLoading(true);
     try {
-      // 1. Buscar todos os agendamentos concluídos
       const { data: appointments } = await supabase
         .from("appointments")
         .select("*, services(*)")
@@ -110,7 +105,6 @@ export function AdminFinance() {
         return;
       }
 
-      // 2. Buscar transações que já vinculadas a agendamentos
       const { data: existingTxs } = await supabase
         .from("transactions")
         .select("appointment_id")
@@ -118,16 +112,13 @@ export function AdminFinance() {
         .not("appointment_id", "is", null);
 
       const syncedIds = new Set(existingTxs?.map(t => t.appointment_id) || []);
-
-      // 3. Identificar agendamentos que faltam no CRM
       const missing = appointments.filter(a => !syncedIds.has(a.id));
 
       if (missing.length === 0) {
-        alert("Todas as transações já estão sincronizadas.");
+        alert("O financeiro já está atualizado com todos os cortes realizados.");
         return;
       }
 
-      // 4. Inserir agendamentos faltantes
       const toInsert = missing.map(a => ({
         barbershop_id: profile.barbershop_id,
         type: "income",
@@ -140,11 +131,11 @@ export function AdminFinance() {
       const { error } = await supabase.from("transactions").insert(toInsert);
       if (error) throw error;
 
-      alert(`${missing.length} transações foram sincronizadas com sucesso!`);
+      alert(`Sucesso! ${missing.length} cortes foram adicionados ao seu faturamento.`);
       fetchData(true);
     } catch (err) {
       console.error("Error syncing appointments:", err);
-      alert("Erro ao sincronizar. Verifique o console.");
+      alert("Erro ao sincronizar dados.");
     } finally {
       setLoading(false);
     }
@@ -172,15 +163,18 @@ export function AdminFinance() {
           type: "fixed_cost",
           amount: c.amount,
           description: c.description,
-          date: format(new Date(selectedYear, selectedMonth, 10), "yyyy-MM-dd") // Dia 10 como padrão
+          date: format(new Date(selectedYear, selectedMonth, 10), "yyyy-MM-dd")
         }));
-        await supabase.from("transactions").insert(newCosts);
+        const { error } = await supabase.from("transactions").insert(newCosts);
+        if (error) throw error;
+        alert(`${newCosts.length} custos fixos replicados para este mês!`);
         fetchData(true);
       } else {
-        alert("Não foram encontrados custos fixos no mês anterior para copiar.");
+        alert("Não encontramos custos fixos no mês anterior para replicar.");
       }
     } catch (err) {
       console.error("Error importing costs:", err);
+      alert("Erro ao replicar custos.");
     } finally {
       setLoading(false);
     }
