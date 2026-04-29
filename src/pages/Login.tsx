@@ -12,6 +12,9 @@ export function Login() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const [shopName, setShopName] = useState("BARBEARIA");
+  const [shopLogo, setShopLogo] = useState<string | null>(null);
+
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
@@ -20,6 +23,27 @@ export function Login() {
   }, [user, navigate]);
 
   useEffect(() => {
+    const fetchShopInfo = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const referralId = params.get("ref");
+      if (referralId) {
+        try {
+          const { data } = await supabase
+            .from("barbershops")
+            .select("name, logo_url")
+            .eq("id", referralId)
+            .single();
+          if (data) {
+            if (data.name) setShopName(data.name);
+            if (data.logo_url) setShopLogo(data.logo_url);
+          }
+        } catch (err) {
+          console.error("Error fetching referral shop info", err);
+        }
+      }
+    };
+    fetchShopInfo();
+
     const handleMessage = async (event: MessageEvent) => {
       // Allow only messages indicating success and containing a session
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data.session) {
@@ -103,8 +127,8 @@ export function Login() {
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-600 to-amber-400" />
         
         <div className="mb-8 flex flex-col items-center text-center">
-          <Logo className="w-16 h-16 shadow-[0_0_15px_rgba(245,158,11,0.2)]" iconClassName="w-8 h-8" />
-          <h1 className="text-2xl font-bold tracking-tighter text-white mt-4">BARBEARIA 18</h1>
+          <Logo src={shopLogo || undefined} className="w-16 h-16 shadow-[0_0_15px_rgba(245,158,11,0.2)]" iconClassName="w-8 h-8" />
+          <h1 className="text-2xl font-bold tracking-tighter text-white mt-4 uppercase">{shopName}</h1>
           <p className="text-sm text-white/40 mt-1">
             Faça login com sua conta Google para agendar seu horário.
           </p>

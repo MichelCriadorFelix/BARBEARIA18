@@ -35,9 +35,16 @@ export function AppLayout() {
           .single();
 
         if (data) {
-          if (data.name) setBarbershopName(data.name);
+          console.log("Barbershop data fetched successfully:", data);
+          if (data.name && data.name.trim() !== "") {
+            setBarbershopName(data.name);
+          } else {
+            console.log("No name set in barbershop, defaulting to Barbearia 18");
+            setBarbershopName("Barbearia 18");
+          }
           if (data.logo_url) setBarbershopLogo(data.logo_url);
         } else if (error && error.code === 'PGRST116' && isAdmin) {
+          console.log("Barbershop not found. Initializing auto for shopId:", shopId);
           // No row exists. Auto initialize it for the barber/master.
           await supabase.from("barbershops").upsert({
             id: shopId,
@@ -47,6 +54,9 @@ export function AppLayout() {
           if (!profile?.barbershop_id) {
              await supabase.from("profiles").update({ barbershop_id: shopId }).eq("id", profile.id);
           }
+          setBarbershopName("Barbearia");
+        } else {
+          console.log("Unknown error fetching barbershop info", error);
         }
       } catch (err) {
         console.error("Error fetching barbershop info", err);

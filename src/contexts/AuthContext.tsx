@@ -125,14 +125,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const referralId = localStorage.getItem("barber_referral");
         if (referralId && fullProfile.role === "client" && fullProfile.barbershop_id !== referralId) {
           console.log("Vinculando cliente à barbearia do convite:", referralId);
-          fullProfile.barbershop_id = referralId;
           
-          await supabase.from("profiles").update({ 
+          const { error: updateError } = await supabase.from("profiles").update({ 
             barbershop_id: referralId 
           }).eq("id", userId);
           
-          // Removemos o referral após atualizar com sucesso
-          localStorage.removeItem("barber_referral");
+          if (!updateError) {
+            fullProfile.barbershop_id = referralId;
+            // Removemos o referral após atualizar com sucesso
+            localStorage.removeItem("barber_referral");
+          } else {
+            console.error("Falha ao vincular cliente à barbearia:", updateError);
+          }
         }
         
         setProfile(fullProfile);
@@ -162,12 +166,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             phone: fallbackProfile.phone,
             barbershop_id: referralId,
           }]);
-          if (insertErr) console.warn("Failed to insert fallback profile", insertErr);
           
-          // Limpa o referral após o uso bem sucedido
-          if (!insertErr) {
-            localStorage.removeItem("barber_referral");
+          if (insertErr) {
+            console.warn("Failed to insert fallback profile (maybe trigger already created it). Attempting update...", insertErr);
+            // If it failed because it already exists (trigger raced), we do an update!
+            if (referralId) {
+              await supabase.from("profiles").update({ barbershop_id: referralId }).eq("id", userId);
+            }
           }
+          
+          // Limpa o referral após tentar vincular
+          localStorage.removeItem("barber_referral");
         });
       }
     } catch (error) {
