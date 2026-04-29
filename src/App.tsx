@@ -49,6 +49,44 @@ import { AdminServices } from "@/pages/Admin/Services";
 import { AdminSettings } from "@/pages/Admin/Settings";
 import { AdminUsers } from "@/pages/Admin/Users";
 
+function OAuthCallback() {
+  React.useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        if (window.opener) {
+          window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', session: data.session }, '*');
+          window.close();
+        } else {
+          window.location.replace('/');
+        }
+      } else {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (session) {
+            if (window.opener) {
+              window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', session }, '*');
+              window.close();
+            } else {
+              window.location.replace('/');
+            }
+          }
+        });
+        return () => subscription.unsubscribe();
+      }
+    });
+
+    // Fallback se não conseguir pegar a sessão após 5 segundos, fecha
+    setTimeout(() => {
+      if (window.opener) window.close();
+    }, 5000);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center text-white">
+      Concluindo login...
+    </div>
+  );
+}
+
 function ProtectedRoute({
   children,
   adminOnly = false,
@@ -58,7 +96,7 @@ function ProtectedRoute({
   adminOnly?: boolean;
   superAdminOnly?: boolean;
 }) {
-  const { user, profile, isLoading, isSuperAdmin } = useAuth();
+  const { user, profile, isLoading, isBarber, isSuperAdmin } = useAuth();
 
   if (isLoading) {
     return <div className="min-h-screen bg-[#050505] flex items-center justify-center text-amber-500">Carregando...</div>;
@@ -102,12 +140,10 @@ function ProtectedRoute({
     );
   }
 
-  // Admin comum tenta acessar rota só de admin
-  if (adminOnly && profile && profile.role !== "admin") {
+  if (adminOnly && !(isBarber || isSuperAdmin)) {
     return <Navigate to="/" replace />;
   }
 
-  // Rota de superAdmin — verificação por EMAIL via isSuperAdmin (nunca por nome)
   if (superAdminOnly && !isSuperAdmin) {
     return <Navigate to="/" replace />;
   }
@@ -121,6 +157,7 @@ function RoutesRenderer() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/auth/callback" element={<OAuthCallback />} />
 
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/" element={<HomeRouter />} />
@@ -128,12 +165,12 @@ function RoutesRenderer() {
         {/* Client Routes */}
         <Route path="/history" element={<ClientHistory />} />
 
-        {/* Admin Routes */}
+        {/* Admin/Barber Routes */}
         <Route path="/admin/finance" element={<ProtectedRoute adminOnly><AdminFinance /></ProtectedRoute>} />
         <Route path="/admin/services" element={<ProtectedRoute adminOnly><AdminServices /></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminSettings /></ProtectedRoute>} />
 
-        {/* SuperAdmin only — aba Equipe/Admins — só Michel Santos */}
+        {/* SuperAdmin only (Master) */}
         <Route path="/admin/users" element={<ProtectedRoute superAdminOnly><AdminUsers /></ProtectedRoute>} />
       </Route>
     </Routes>
@@ -141,9 +178,9 @@ function RoutesRenderer() {
 }
 
 function HomeRouter() {
-  const { profile } = useAuth();
+  const { isBarber, isSuperAdmin } = useAuth();
 
-  if (profile?.role === "admin") {
+  if (isBarber || isSuperAdmin) {
     return <AdminAgenda />;
   }
 
@@ -151,24 +188,6 @@ function HomeRouter() {
 }
 
 export default function App() {
-  React.useEffect(() => {
-    if (window.opener && window.location.hash.includes('access_token')) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          window.close();
-        }
-      });
-
-      setTimeout(() => {
-        window.close();
-      }, 2000);
-
-      return () => {
-        subscription.unsubscribe();
-      };
-    }
-  }, []);
-
   if (!hasSupabaseKeys) {
     return <SetupSupabase />;
   }

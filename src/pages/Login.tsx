@@ -19,6 +19,29 @@ export function Login() {
     }
   }, [user, navigate]);
 
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      // Allow only messages indicating success and containing a session
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data.session) {
+        setLoading(true);
+        try {
+          // Force the session into the iframe's partitioned storage
+          await supabase.auth.setSession({
+            access_token: event.data.session.access_token,
+            refresh_token: event.data.session.refresh_token,
+          });
+          // After session is forced, user context will update and redirect
+        } catch (err) {
+          console.error("Set session error:", err);
+          setError("Erro ao autenticar. Tente novamente.");
+          setLoading(false);
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError(null);
@@ -28,7 +51,7 @@ export function Login() {
       const { data, error: signInError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}/auth/callback`,
           skipBrowserRedirect: isIframe, // Crucial for iframes
           queryParams: {
             prompt: 'select_account'

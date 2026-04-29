@@ -2,22 +2,21 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
 
-// Email do superAdmin — único com acesso total (aba Equipe/Admins)
-const SUPER_ADMIN_EMAIL = "michelgeminicriador@gmail.com";
-
 interface Profile {
   id: string;
-  role: "admin" | "user" | "client";
+  role: "master" | "barber" | "client";
   full_name: string;
   phone: string;
-  email?: string; // guardamos o email no perfil para checar superAdmin
+  email?: string;
+  barbershop_id?: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
-  isSuperAdmin: boolean; // novo campo — true só para Michel
+  isSuperAdmin: boolean;
+  isBarber: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -26,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   isLoading: true,
   isSuperAdmin: false,
+  isBarber: false,
   signOut: async () => {},
 });
 
@@ -36,12 +36,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // isSuperAdmin é calculado direto do email autenticado pelo Google/Supabase
-  // Nunca depende de nome ou campo editável no banco
-  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
+  const isSuperAdmin = profile?.role === "master";
+  const isBarber = profile?.role === "barber";
 
   useEffect(() => {
     let isMounted = true;
+
+    // Lógica de Convite: Captura o barbershop_id da URL e salva no localStorage
+    const params = new URLSearchParams(window.location.search);
+    const referralId = params.get("ref");
+    if (referralId) {
+      console.log("Convite detectado para barbearia:", referralId);
+      localStorage.setItem("barber_referral", referralId);
+    }
 
     const checkUser = async () => {
       try {
@@ -52,19 +59,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(currentUser);
 
         if (currentUser) {
-          const email = currentUser.email || "";
-          const fallbackName = currentUser.user_metadata?.full_name || email.split('@')[0] || "Usuário";
-          const isOwner = email === SUPER_ADMIN_EMAIL;
-
-          setProfile({
-            id: currentUser.id,
-            role: isOwner ? "admin" : "user",
-            full_name: fallbackName,
-            phone: "",
-            email,
-          });
-          setIsLoading(false);
-
           await fetchProfile(currentUser);
         } else {
           setIsLoading(false);
@@ -91,21 +85,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Ensure loading state is active while profile is fetching
+      // to prevent premature redirects from ProtectedRoute
+      setIsLoading(true);
       setUser(newUser);
-
-      const email = newUser.email || "";
-      const fallbackName = newUser.user_metadata?.full_name || email.split('@')[0] || "Usuário";
-      const isOwner = email === SUPER_ADMIN_EMAIL;
-
-      setProfile({
-        id: newUser.id,
-        role: isOwner ? "admin" : "user",
-        full_name: fallbackName,
-        phone: "",
-        email,
-      });
-      setIsLoading(false);
-
       fetchProfile(newUser);
     });
 
@@ -136,21 +119,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data) {
-        // Sempre preservamos o email real do auth, nunca do banco
         setProfile({ ...data as Profile, email: currentUser.email || "" });
       } else {
         console.warn("Profile not found in database. Setting fallback profile...");
 
         const email = currentUser.email || "";
         const fallbackName = currentUser.user_metadata?.full_name || email?.split('@')[0] || "Usuário";
-        const isOwner = email === SUPER_ADMIN_EMAIL;
+        const referralId = localStorage.getItem("barber_referral");
 
         const fallbackProfile: Profile = {
           id: userId,
-          role: isOwner ? "admin" : "user",
+          role: "client", // Default role é sempre client
           full_name: fallbackName,
           phone: "",
           email,
+          barbershop_id: referralId,
         };
 
         setProfile(fallbackProfile);
@@ -161,8 +144,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: fallbackProfile.role,
             full_name: fallbackProfile.full_name,
             phone: fallbackProfile.phone,
+            barbershop_id: referralId,
           }]);
-          if (insertErr) console.warn("Failed to insert fallback profile (maybe it already exists)", insertErr);
+          if (insertErr) console.warn("Failed to insert fallback profile", insertErr);
+          
+          // Limpa o referral após o uso bem sucedido
+          if (!insertErr) {
+            localStorage.removeItem("barber_referral");
+          }
         });
       }
     } catch (error) {
@@ -174,14 +163,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      console.log("Signing out user inside AuthContext...");
       setUser(null);
       setProfile(null);
       setIsLoading(true);
 
       await supabase.auth.signOut();
-      console.log("Supabase signOut completed");
-
       window.location.href = '/login';
     } catch (error) {
       console.error("Error signing out:", error);
@@ -190,7 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, isLoading, isSuperAdmin, signOut }}>
+    <AuthContext.Provider value={{ user, profile, isLoading, isSuperAdmin, isBarber, signOut }}>
       {children}
     </AuthContext.Provider>
   );

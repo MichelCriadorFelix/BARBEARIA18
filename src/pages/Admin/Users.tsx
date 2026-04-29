@@ -7,7 +7,7 @@ import { Navigate } from "react-router-dom";
 interface Profile {
   id: string;
   full_name: string;
-  role: "admin" | "user" | "client";
+  role: "master" | "barber" | "client";
   created_at: string;
 }
 
@@ -15,9 +15,10 @@ export function AdminUsers() {
   const { profile } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
 
-  if (profile?.full_name?.toLowerCase() !== 'michel santos') {
+  if (profile?.role !== 'master') {
     return <Navigate to="/" replace />;
   }
+
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error", text: string } | null>(null);
@@ -43,10 +44,11 @@ export function AdminUsers() {
     }
   }
 
-  async function toggleAdmin(id: string, currentRole: string) {
+  async function toggleBarber(id: string, currentRole: string) {
+    if (currentRole === 'master') return; // Cannot demote master here
     try {
-      const isCurrentlyAdmin = currentRole?.toLowerCase() === "admin";
-      const newRole = isCurrentlyAdmin ? "user" : "admin";
+      const isCurrentlyBarber = currentRole === "barber";
+      const newRole = isCurrentlyBarber ? "client" : "barber";
       
       const { error } = await supabase
         .from("profiles")
@@ -57,7 +59,7 @@ export function AdminUsers() {
 
       setMessage({ 
         type: "success", 
-        text: `Usuário ${newRole === 'admin' ? 'promovido a Admin' : 'rebaixado'} com sucesso!` 
+        text: `Usuário ${newRole === 'barber' ? 'promovido a Barber' : 'rebaixado'} com sucesso!` 
       });
       
       // Refresh local list
@@ -66,8 +68,8 @@ export function AdminUsers() {
       // Clear message after 3 seconds
       setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
-      console.error("Error toggling admin:", err);
-      setMessage({ type: "error", text: "Erro ao atualizar: Verifique se você executou o novo script SQL de permissões." });
+      console.error("Error toggling barber:", err);
+      setMessage({ type: "error", text: "Erro ao atualizar. Verifique a nova constraint." });
     }
   }
 
@@ -78,8 +80,8 @@ export function AdminUsers() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Gestão de Equipe</h1>
-        <p className="text-white/40 text-sm">Gerencie quem tem acesso administrativo ao sistema.</p>
+        <h1 className="text-2xl font-bold">Gestão de Equipe (Barbers)</h1>
+        <p className="text-white/40 text-sm">Gerencie quem é Barber (Dono de barbearia).</p>
       </div>
 
       <div className="relative">
@@ -112,35 +114,40 @@ export function AdminUsers() {
             <div key={user.id} className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center justify-between group hover:border-amber-500/50 transition-colors">
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  user.role?.toLowerCase() === 'admin' ? 'bg-amber-500/20 text-amber-500' : 'bg-white/5 text-white/20'
+                  user.role === 'barber' || user.role === 'master' ? 'bg-amber-500/20 text-amber-500' : 'bg-white/5 text-white/20'
                 }`}>
                   <UserIcon className="w-6 h-6" />
                 </div>
                 <div>
                   <h3 className="font-bold flex items-center gap-2">
                     {user.full_name}
-                    {user.role?.toLowerCase() === 'admin' && (
-                      <span className="bg-amber-500 text-amber-950 text-[10px] uppercase font-black px-1.5 py-0.5 rounded">Admin</span>
+                    {user.role === 'master' && (
+                      <span className="bg-purple-500 text-white text-[10px] uppercase font-black px-1.5 py-0.5 rounded">Master</span>
+                    )}
+                    {user.role === 'barber' && (
+                      <span className="bg-amber-500 text-amber-950 text-[10px] uppercase font-black px-1.5 py-0.5 rounded">Barber</span>
                     )}
                   </h3>
                   <p className="text-xs text-white/40 italic">Entrou em {new Date(user.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
 
-              <button 
-                onClick={() => toggleAdmin(user.id, user.role)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                  user.role?.toLowerCase() === 'admin' 
-                    ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white' 
-                    : 'bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white'
-                }`}
-              >
-                {user.role?.toLowerCase() === 'admin' ? (
-                  <><ShieldAlert className="w-4 h-4" /> Remover Admin</>
-                ) : (
-                  <><Shield className="w-4 h-4" /> Tornar Admin</>
-                )}
-              </button>
+              {user.role !== 'master' && (
+                <button 
+                  onClick={() => toggleBarber(user.id, user.role)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                    user.role === 'barber'
+                      ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white' 
+                      : 'bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white'
+                  }`}
+                >
+                  {user.role === 'barber' ? (
+                    <><ShieldAlert className="w-4 h-4" /> Remover Barber</>
+                  ) : (
+                    <><Shield className="w-4 h-4" /> Tornar Barber</>
+                  )}
+                </button>
+              )}
             </div>
           ))
         ) : (

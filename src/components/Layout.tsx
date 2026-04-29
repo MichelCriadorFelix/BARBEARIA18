@@ -9,15 +9,40 @@ import { Logo } from "./Logo";
 import { InstallAppButton } from "./InstallAppButton";
 
 export function AppLayout() {
-  const { profile, signOut } = useAuth();
+  const { profile, isBarber, isSuperAdmin, signOut } = useAuth();
   const location = useLocation();
-  const isAdmin = profile?.role === "admin";
+  const isAdmin = isBarber || isSuperAdmin;
   const [now, setNow] = useState(new Date());
+  const [barbershopName, setBarbershopName] = useState<string>("Barbearia 18");
+  const [barbershopLogo, setBarbershopLogo] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    async function fetchBarbershopInfo() {
+      if (!profile?.barbershop_id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from("barbershops")
+          .select("name, logo_url")
+          .eq("id", profile.barbershop_id)
+          .single();
+
+        if (data) {
+          if (data.name) setBarbershopName(data.name);
+          if (data.logo_url) setBarbershopLogo(data.logo_url);
+        }
+      } catch (err) {
+        console.error("Error fetching barbershop info", err);
+      }
+    }
+
+    fetchBarbershopInfo();
+  }, [profile?.barbershop_id]);
 
   const clientLinks = [
     { name: "Agendar", href: "/", icon: Calendar },
@@ -28,23 +53,26 @@ export function AppLayout() {
     { name: "Agenda", href: "/", icon: Calendar },
     { name: "Finanças / CRM", href: "/admin/finance", icon: DollarSign },
     { name: "Serviços", href: "/admin/services", icon: ListTodo },
-    ...(profile?.full_name?.toLowerCase() === "michel santos" ? [{ name: "Equipe / Admins", href: "/admin/users", icon: Users }] : []),
+    ...(isSuperAdmin ? [{ name: "Equipe / Admins", href: "/admin/users", icon: Users }] : []),
     { name: "Configurações", href: "/admin/settings", icon: Settings },
   ];
 
   const links = isAdmin ? adminLinks : clientLinks;
-
-  // Use Eduardo Gomes as fallback if admin, otherwise username
-  const displayUserName = isAdmin ? (profile?.full_name || "Eduardo Gomes") : (profile?.full_name || "Usuário");
 
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col md:flex-row">
       <nav className="w-full md:w-64 bg-black/40 backdrop-blur-md border-b md:border-b-0 md:border-r border-white/10 p-4 flex flex-shrink-0 flex-col justify-between">
         <div>
           <div className="flex items-center gap-3 mb-8 px-2 md:mt-4">
-            <Logo />
+            <Logo src={barbershopLogo || undefined} />
             <div>
-              <h2 className="font-bold text-lg leading-tight tracking-tight uppercase italic">Barbearia <span className="text-amber-500 underline decoration-2 underline-offset-4">18</span></h2>
+              <h2 className="font-bold text-lg leading-tight tracking-tight uppercase italic flex flex-wrap gap-x-1">
+                {barbershopName.split(' ').map((word, i) => (
+                  <span key={i} className={i === barbershopName.split(' ').length - 1 ? "text-amber-500 underline decoration-2 underline-offset-4" : ""}>
+                    {word}
+                  </span>
+                ))}
+              </h2>
               <p className="text-[10px] text-amber-500 font-black uppercase tracking-widest mt-1">{isAdmin ? "Administração" : "Painel do Cliente"}</p>
             </div>
           </div>
@@ -94,7 +122,7 @@ export function AppLayout() {
                 <User className="w-4 h-4 text-white/60" />
               </div>
               <div className="truncate">
-                <p className="text-sm font-semibold truncate text-white">{displayUserName}</p>
+                <p className="text-sm font-semibold truncate text-white">{profile?.full_name || "Usuário"}</p>
               </div>
             </div>
             <div
