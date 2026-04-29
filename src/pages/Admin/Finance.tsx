@@ -18,6 +18,11 @@ export function AdminFinance() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Filter state
+  const [viewType, setViewType] = useState<"monthly" | "yearly">("monthly");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -26,12 +31,18 @@ export function AdminFinance() {
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
+  const months = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+  ];
+
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+
   useEffect(() => {
     if (profile?.barbershop_id) {
        fetchData(true);
     }
 
-    // Adiciona listener em tempo real para transações
     const channel = supabase
       .channel('finance_changes')
       .on('postgres_changes', { 
@@ -46,28 +57,74 @@ export function AdminFinance() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.barbershop_id]);
+  }, [profile?.barbershop_id, selectedMonth, selectedYear, viewType]);
 
   async function fetchData(showLoading = true) {
-    const isInitialLoad = transactions.length === 0;
-    if (showLoading || isInitialLoad) setLoading(true);
+    if (!profile?.barbershop_id) return;
+    if (showLoading) setLoading(true);
     
     try {
-      if (!profile?.barbershop_id) return;
-      // Get last 3 months starting from the 1st of 2 months ago
-      const startDate = format(startOfMonth(subMonths(new Date(), 2)), "yyyy-MM-dd");
-      
-      const { data, error } = await supabase
+      let query = supabase
         .from("transactions")
         .select("*")
-        .eq("barbershop_id", profile.barbershop_id)
-        .gte("date", startDate)
-        .order("date", { ascending: false });
+        .eq("barbershop_id", profile.barbershop_id);
+
+      if (viewType === "monthly") {
+        const start = format(new Date(selectedYear, selectedMonth, 1), "yyyy-MM-dd");
+        const end = format(endOfMonth(new Date(selectedYear, selectedMonth, 1)), "yyyy-MM-dd");
+        query = query.gte("date", start).lte("date", end);
+      } else {
+        const start = `${selectedYear}-01-01`;
+        const end = `${selectedYear}-12-31`;
+        query = query.gte("date", start).lte("date", end);
+      }
+
+      const { data, error } = await query.order("date", { ascending: false });
         
       if (error) throw error;
       if (data) setTransactions(data);
+
+      // Lógica de Despesas Fixas Recorrentes:
+      // Se estamos no mês atual e não há custos fixos, mas no mês anterior havia, perguntamos ou importamos.
+      // Para simplificar, vamos habilitar um botão de "Importar Custos do Mês Anterior" se o mês estiver vazio de fixos.
     } catch (err) {
       console.error("Error fetching finance data:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleImportFixedCosts() {
+    if (!profile?.barbershop_id) return;
+    setLoading(true);
+    try {
+      const prevMonthDate = subMonths(new Date(selectedYear, selectedMonth, 1), 1);
+      const start = format(startOfMonth(prevMonthDate), "yyyy-MM-dd");
+      const end = format(endOfMonth(prevMonthDate), "yyyy-MM-dd");
+
+      const { data: prevCosts } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("barbershop_id", profile.barbershop_id)
+        .eq("type", "fixed_cost")
+        .gte("date", start)
+        .lte("date", end);
+
+      if (prevCosts && prevCosts.length > 0) {
+        const newCosts = prevCosts.map(c => ({
+          barbershop_id: profile.barbershop_id,
+          type: "fixed_cost",
+          amount: c.amount,
+          description: c.description,
+          date: format(new Date(selectedYear, selectedMonth, 10), "yyyy-MM-dd") // Dia 10 como padrão
+        }));
+        await supabase.from("transactions").insert(newCosts);
+        fetchData(true);
+      } else {
+        alert("Não foram encontrados custos fixos no mês anterior para copiar.");
+      }
+    } catch (err) {
+      console.error("Error importing costs:", err);
     } finally {
       setLoading(false);
     }
@@ -126,57 +183,100 @@ export function AdminFinance() {
     setIsModalOpen(true);
   }
 
-  // Calculate metrics for current month
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  
-  const currentMonthTx = transactions.filter(t => t.date && t.date.substring(0, 7) === currentMonth);
-  const income = currentMonthTx.filter(t => t.type === 'income').reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-  const fixed_costs = currentMonthTx.filter(t => t.type === 'fixed_cost').reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-  const variable_costs = currentMonthTx.filter(t => t.type === 'expense' || t.type === 'variable_cost').reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  // Metrics calculation
+  const income = transactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  const fixed_costs = transactions.filter(t => t.type === 'fixed_cost').reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  const variable_costs = transactions.filter(t => t.type === 'expense' || t.type === 'variable_cost').reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
   
   const total_costs = fixed_costs + variable_costs;
   const profit = income - total_costs;
 
-  // Chart data
+  // Chart data preparation
   const chartData = transactions.reduce((acc: any[], curr) => {
-    const month = curr.date.substring(0, 7);
-    let monthData = acc.find(m => m.name === month);
-    if (!monthData) {
-      monthData = { name: month, receitas: 0, despesas: 0 };
-      acc.push(monthData);
+    // Label depends on viewType: day string or month string
+    const label = viewType === "monthly" 
+      ? format(new Date(curr.date + "T12:00:00"), "dd/MM")
+      : months[new Date(curr.date + "T12:00:00").getUTCMonth()];
+
+    let dataPoint = acc.find(m => m.name === label);
+    if (!dataPoint) {
+      dataPoint = { name: label, receitas: 0, despesas: 0, rawDate: curr.date };
+      acc.push(dataPoint);
     }
     
-    if (curr.type === 'income') monthData.receitas += Number(curr.amount);
-    else monthData.despesas += Number(curr.amount);
+    if (curr.type === 'income') dataPoint.receitas += Number(curr.amount);
+    else dataPoint.despesas += Number(curr.amount);
     
     return acc;
-  }, []).sort((a,b) => a.name.localeCompare(b.name));
+  }, []).sort((a,b) => a.rawDate.localeCompare(b.rawDate));
+
+  const hasNoFixedCosts = fixed_costs === 0 && viewType === "monthly";
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">CRM Financeiro</h1>
           <p className="text-white/40 text-sm">Controle de faturamento, custos e lucro limpo.</p>
         </div>
-        <button
-          onClick={openNewModal}
-          className="bg-amber-500 hover:bg-amber-600 text-amber-950 font-bold py-2 px-4 rounded-xl flex items-center gap-2 transition-transform active:scale-95 text-sm"
-        >
-          <Plus className="w-4 h-4" />
-          Nova Despesa
-        </button>
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setViewType(viewType === "monthly" ? "yearly" : "monthly")}
+            className="bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium py-2 px-3 rounded-xl text-xs transition-colors"
+          >
+            Ver {viewType === "monthly" ? "Anual" : "Mensal"}
+          </button>
+          <button
+            onClick={openNewModal}
+            className="bg-amber-500 hover:bg-amber-600 text-amber-950 font-bold py-2 px-4 rounded-xl flex items-center gap-2 transition-transform active:scale-95 text-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Lançamento
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3 bg-white/5 border border-white/10 p-3 rounded-2xl backdrop-blur-md">
+        <div className="flex items-center gap-2">
+          <span className="text-white/40 text-xs font-medium uppercase tracking-wider ml-2">Filtrar por:</span>
+          {viewType === "monthly" && (
+            <select 
+              value={selectedMonth} 
+              onChange={e => setSelectedMonth(parseInt(e.target.value))}
+              className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-amber-500"
+            >
+              {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
+            </select>
+          )}
+          <select 
+            value={selectedYear} 
+            onChange={e => setSelectedYear(parseInt(e.target.value))}
+            className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-amber-500"
+          >
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+
+        {hasNoFixedCosts && (
+          <button 
+            onClick={handleImportFixedCosts}
+            className="text-amber-500 hover:text-amber-400 text-xs font-bold border border-amber-500/20 px-3 py-1.5 rounded-lg hover:bg-amber-500/10 transition-colors ml-auto"
+          >
+            Importar Custos Fixos do Mês Anterior
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white/5 border border-white/10 p-5 rounded-2xl backdrop-blur-lg">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-green-500/10 rounded-lg"><TrendingUp className="w-5 h-5 text-green-500" /></div>
-            <h3 className="text-white/40 font-medium">Receita (Mês)</h3>
+            <h3 className="text-white/40 font-medium">Receita {viewType === "monthly" ? "(Mês)" : "(Ano)"}</h3>
           </div>
-          <p className="text-3xl font-bold text-white">
-            {loading && transactions.length === 0 ? "..." : `R$ ${income.toFixed(2)}`}
+          <p className="text-3xl font-bold text-white uppercase tracking-tighter">
+            {loading ? "..." : `R$ ${income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
           </p>
         </div>
         
@@ -185,10 +285,10 @@ export function AdminFinance() {
             <div className="p-2 bg-red-500/10 rounded-lg"><TrendingDown className="w-5 h-5 text-red-500" /></div>
             <h3 className="text-white/40 font-medium">Custos Totais</h3>
           </div>
-          <p className="text-3xl font-bold text-white">
-            {loading && transactions.length === 0 ? "..." : `R$ ${total_costs.toFixed(2)}`}
+          <p className="text-3xl font-bold text-white tracking-tighter">
+            {loading ? "..." : `R$ ${total_costs.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
           </p>
-          {(transactions.length > 0) && <p className="text-xs text-white/40 mt-1">Fixos: R$ {fixed_costs.toFixed(2)} | Var: R$ {variable_costs.toFixed(2)}</p>}
+          {!loading && <p className="text-[10px] text-white/40 mt-1 font-mono uppercase">Fixos: R$ {fixed_costs.toFixed(2)} | Var: R$ {variable_costs.toFixed(2)}</p>}
         </div>
         
         <div className="bg-white/5 border border-white/10 p-5 rounded-2xl relative overflow-hidden backdrop-blur-lg">
@@ -197,86 +297,102 @@ export function AdminFinance() {
             <div className="p-2 bg-amber-500/10 rounded-lg"><DollarSign className="w-5 h-5 text-amber-500" /></div>
             <h3 className="text-white/40 font-medium">Lucro Líquido</h3>
           </div>
-          <p className={`text-3xl font-bold relative z-10 ${profit >= 0 ? "text-amber-500" : "text-red-500"}`}>
-            {loading && transactions.length === 0 ? "..." : `R$ ${profit.toFixed(2)}`}
+          <p className={`text-3xl font-bold relative z-10 tracking-tighter ${profit >= 0 ? "text-amber-500" : "text-red-500"}`}>
+            {loading ? "..." : `R$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
           </p>
         </div>
       </div>
 
-      <div className="bg-white/5 border border-white/10 p-5 rounded-2xl h-80 backdrop-blur-lg">
-        <h3 className="font-bold mb-6 text-white">Receitas vs Despesas</h3>
+      <div className="bg-white/5 border border-white/10 p-5 rounded-2xl h-80 backdrop-blur-lg shadow-inner">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="font-bold text-white uppercase text-xs tracking-widest text-white/60">Análise de Fluxo ({viewType === "monthly" ? "Mensal" : "Anual"})</h3>
+          <div className="flex items-center gap-3">
+             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div><span className="text-[10px] text-white/40 uppercase">Receitas</span></div>
+             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500"></div><span className="text-[10px] text-white/40 uppercase">Despesas</span></div>
+          </div>
+        </div>
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
-              <XAxis dataKey="name" stroke="#ffffff40" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="#ffffff40" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val}`} />
-              <Tooltip cursor={{fill: '#ffffff10'}} contentStyle={{backgroundColor: '#00000080', borderColor: '#ffffff10', borderRadius: '8px', backdropFilter: 'blur(8px)'}} />
-              <Bar dataKey="receitas" fill="#f59e0b" radius={[4,4,0,0]} />
-              <Bar dataKey="despesas" fill="#ef4444" radius={[4,4,0,0]} />
+              <XAxis dataKey="name" stroke="#ffffff20" fontSize={10} tickLine={false} axisLine={false} />
+              <YAxis hide />
+              <Tooltip cursor={{fill: '#ffffff05'}} contentStyle={{backgroundColor: '#0c0a09', borderColor: '#ffffff10', borderRadius: '12px', backdropFilter: 'blur(16px)', border: '1px solid #ffffff10'}} />
+              <Bar dataKey="receitas" fill="#f59e0b" radius={[4,4,0,0]} barSize={viewType === "monthly" ? 15 : 40} />
+              <Bar dataKey="despesas" fill="#ef4444" radius={[4,4,0,0]} barSize={viewType === "monthly" ? 15 : 40} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-full flex items-center justify-center text-white/20">Sem dados suficientes.</div>
+          <div className="h-full flex items-center justify-center text-white/10 uppercase text-xs tracking-widest">Sem dados para este período</div>
         )}
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-lg">
-        <div className="px-5 py-4 border-b border-white/10">
-          <h3 className="font-bold text-white">Histórico Recente</h3>
+        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+          <h3 className="font-bold text-white text-sm uppercase tracking-wider">Histórico de Lançamentos</h3>
+          <span className="text-[10px] bg-white/5 px-2 py-1 rounded text-white/40">{transactions.length} registros</span>
         </div>
         <div className="divide-y divide-white/10">
-          {transactions.slice(0, 10).map(tx => (
-            <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-white/10 transition-colors">
-              <div>
-                <p className="font-medium text-white">{tx.description}</p>
-                <p className="text-xs text-white/40">{format(new Date(tx.date), 'dd/MM/yyyy')} • {tx.type}</p>
-              </div>
+          {transactions.map(tx => (
+            <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-white/10 transition-colors group">
               <div className="flex items-center gap-4">
-                <div className={`font-bold ${tx.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${tx.type === 'income' ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                  {tx.type === 'income' ? <TrendingUp className="w-5 h-5 text-green-500" /> : <TrendingDown className="w-5 h-5 text-red-500" />}
+                </div>
+                <div>
+                  <p className="font-bold text-white text-sm">{tx.description}</p>
+                  <p className="text-[10px] text-white/30 uppercase tracking-tighter">
+                    {format(new Date(tx.date + "T12:00:00"), "dd MMM yyyy")} • {tx.type === 'fixed_cost' ? 'Custo Fixo' : tx.type === 'variable_cost' ? 'Custo Variável' : tx.type === 'income' ? 'Receita' : 'Outro'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className={`font-bold text-sm ${tx.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
                   {tx.type === 'income' ? '+' : '-'} R$ {Number(tx.amount).toFixed(2)}
                 </div>
-                <div className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
-                  <button onClick={() => openEditModal(tx)} className="p-1 hover:text-amber-500"><Edit2 className="w-4 h-4" /></button>
-                  <button onClick={() => handleDelete(tx.id)} className="p-1 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => openEditModal(tx)} className="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-amber-500 transition-colors"><Edit2 className="w-4 h-4" /></button>
+                  <button onClick={() => handleDelete(tx.id)} className="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
             </div>
           ))}
-          {transactions.length === 0 && <div className="p-8 text-center text-white/40">Nenhuma transação registrada.</div>}
+          {transactions.length === 0 && <div className="p-12 text-center text-white/20 uppercase text-xs tracking-[0.2em]">Fluxo vazio neste período</div>}
         </div>
       </div>
 
+       {/* Modal remains largely same but updated */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl backdrop-blur-xl">
-            <h2 className="text-xl font-bold mb-4 text-white">{editingId ? "Editar Lançamento" : "Adicionar Despesa"}</h2>
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+          <div className="bg-[#0c0a09] border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-amber-700"></div>
+            <h2 className="text-2xl font-bold mb-6 text-white italic tracking-tight">{editingId ? "EDITAR REGISTRO" : "NOVO LANÇAMENTO"}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm text-white/40 mb-1">Tipo</label>
-                <select value={type} onChange={e => setType(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 backdrop-blur-md">
-                  <option value="fixed_cost">Custo Fixo (Aluguel, Luz)</option>
-                  <option value="variable_cost">Custo Variável (Lâminas, Produtos)</option>
-                  <option value="expense">Outra Despesa / Retirada</option>
-                  <option value="income">Receita (Entrada Manual)</option>
+                <label className="block text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1.5 ml-1">Categoria</label>
+                <select value={type} onChange={e => setType(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white focus:outline-none focus:border-amber-500 transition-all text-sm font-medium">
+                  <option value="fixed_cost">Custo Fixo (Recorrente)</option>
+                  <option value="variable_cost">Custo Variável</option>
+                  <option value="expense">Retirada / Outros</option>
+                  <option value="income">Receita Extra</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-white/40 mb-1">Descrição</label>
-                <input required value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 backdrop-blur-md" placeholder="Ex: Conta de Luz" />
+                <label className="block text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1.5 ml-1">Descrição</label>
+                <input required value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white focus:outline-none focus:border-amber-500 transition-all text-sm" placeholder="Ex: Aluguel de Maio" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-white/40 mb-1">Valor (R$)</label>
-                  <input required type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 backdrop-blur-md" placeholder="150.00" />
+                  <label className="block text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1.5 ml-1">Valor (R$)</label>
+                  <input required type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white focus:outline-none focus:border-amber-500 transition-all text-sm font-mono" placeholder="0,00" />
                 </div>
                 <div>
-                  <label className="block text-sm text-white/40 mb-1">Data de Vencimento / Pgto</label>
-                  <input required type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 backdrop-blur-md" />
+                  <label className="block text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1.5 ml-1">Data</label>
+                  <input required type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 text-white focus:outline-none focus:border-amber-500 transition-all text-sm" />
                 </div>
               </div>
-              <div className="flex gap-3 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-white/40 hover:text-white font-medium">Cancelar</button>
-                <button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-amber-950 font-bold py-3 rounded-xl transition-colors">Salvar</button>
+              <div className="flex gap-4 mt-8">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 text-white/40 hover:text-white font-bold uppercase text-xs tracking-widest transition-all">Sair</button>
+                <button type="submit" className="flex-[2] bg-amber-500 hover:bg-amber-600 text-amber-950 font-black py-4 rounded-2xl transition-all shadow-lg shadow-amber-500/20 uppercase text-xs tracking-widest">Salvar Registro</button>
               </div>
             </form>
           </div>
