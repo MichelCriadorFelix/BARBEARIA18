@@ -218,7 +218,8 @@ export function ClientBooking() {
 
       const { data: booked, error } = await supabase
         .from("appointments")
-        .select("start_time, end_time")
+        .select("start_time, end_time, profiles!inner(barbershop_id)")
+        .eq("profiles.barbershop_id", profile?.barbershop_id)
         .in("status", ["pending", "confirmed", "completed"])
         .gte("start_time", startRange)
         .lte("start_time", endRange);

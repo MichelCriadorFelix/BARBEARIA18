@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { CheckCircle, AlertCircle, Trash2, Image as ImageIcon, Share2, Copy } from "lucide-react";
+import { CheckCircle, AlertCircle, Trash2, Image as ImageIcon, Share2, Copy, Upload, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -9,9 +9,11 @@ export function AdminSettings() {
   const [message, setMessage] = useState<{ type: "success" | "error", text: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [shopName, setShopName] = useState("");
   const [shopLogo, setShopLogo] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const inviteLink = profile?.barbershop_id 
     ? `${window.location.origin}/login?ref=${profile.barbershop_id}`
@@ -40,6 +42,36 @@ export function AdminSettings() {
     loadShopData();
   }, [profile?.barbershop_id]);
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !profile?.barbershop_id) return;
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${profile.barbershop_id}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('logos')
+        .getPublicUrl(filePath);
+
+      setShopLogo(publicUrl);
+      setMessage({ type: "success", text: "Logo enviada! Clique em salvar para confirmar." });
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: "error", text: "Erro ao fazer upload. Certifique-se que o bucket 'logos' existe no Supabase." });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   async function updateShopInfo() {
     if (!profile?.barbershop_id) return;
     setIsSaving(true);
@@ -53,8 +85,8 @@ export function AdminSettings() {
         .eq("id", profile.barbershop_id);
 
       if (error) throw error;
-      setMessage({ type: "success", text: "Informações da barbearia atualizadas com sucesso!" });
-      setTimeout(() => setMessage(null), 3000);
+      setMessage({ type: "success", text: "Informações atualizadas com sucesso!" });
+      setTimeout(() => window.location.reload(), 1500);
     } catch (err) {
       console.error(err);
       setMessage({ type: "error", text: "Erro ao salvar informações." });
@@ -63,35 +95,30 @@ export function AdminSettings() {
     }
   }
 
-  async function clearAllData() {
-    if (!confirm("TEM CERTEZA? Isso vai apagar TODOS os agendamentos, histórico e registros financeiros permanentemente. Esta ação não pode ser desfeita.")) {
-      return;
-    }
+  async function clearMyData() {
+    if (!profile?.barbershop_id) return;
+    if (!confirm("TEM CERTEZA? Isso vai apagar APENAS os agendamentos e transações desta barbearia. Esta ação não poderá ser desfeita.")) return;
 
     try {
       setIsDeleting(true);
-      setMessage(null);
-
-      const { error: errorApp } = await supabase
+      
+      const { data: myAppointments } = await supabase
         .from('appointments')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+        .select('id, profiles!inner(barbershop_id)')
+        .eq('profiles.barbershop_id', profile.barbershop_id);
 
-      const { error: errorTrans } = await supabase
-        .from('transactions')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+      const appointmentIds = myAppointments?.map(a => a.id) || [];
 
-      if (errorApp || errorTrans) throw errorApp || errorTrans;
+      if (appointmentIds.length > 0) {
+        await supabase.from('transactions').delete().in('appointment_id', appointmentIds);
+        await supabase.from('appointments').delete().in('id', appointmentIds);
+      }
 
-      setMessage({ type: "success", text: "Todos os dados foram limpos com sucesso! Recarregando..." });
-
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+      setMessage({ type: "success", text: "Dados da sua barbearia limpos com sucesso!" });
+      setTimeout(() => window.location.reload(), 2000);
     } catch (error: any) {
       console.error(error);
-      setMessage({ type: "error", text: "Erro ao limpar dados. Tente novamente." });
+      setMessage({ type: "error", text: "Erro ao limpar dados." });
     } finally {
       setIsDeleting(false);
     }
@@ -130,68 +157,84 @@ export function AdminSettings() {
         </div>
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-xl space-y-6">
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-xl space-y-8">
         <h2 className="text-lg font-bold flex items-center gap-2">
           <ImageIcon className="w-5 h-5 text-amber-500" />
-          Identidade da Barbearia
+          Identidade Visual
         </h2>
         
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2 block">Nome da Barbearia</label>
-            <input 
-              type="text"
-              value={shopName}
-              onChange={(e) => setShopName(e.target.value)}
-              placeholder="Ex: Barbearia do João"
-              className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-amber-500 outline-none transition-colors"
-            />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-6">
+            <div>
+              <label className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2 block">Nome da Barbearia</label>
+              <input 
+                type="text"
+                value={shopName}
+                onChange={(e) => setShopName(e.target.value)}
+                placeholder="Ex: Barbearia 18"
+                className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-amber-500 outline-none transition-colors font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2 block">Logotipo</label>
+              <input 
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="w-full bg-white/5 border-2 border-dashed border-white/10 hover:border-amber-500/50 rounded-xl p-8 transition-all flex flex-col items-center justify-center gap-3 group"
+              >
+                {isUploading ? (
+                  <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+                ) : (
+                  <Upload className="w-8 h-8 text-white/20 group-hover:text-amber-500 transition-colors" />
+                )}
+                <span className="text-xs font-black uppercase tracking-widest text-white/40 group-hover:text-white transition-colors text-center">
+                  {isUploading ? "Enviando..." : "Substituir Logotipo"}
+                </span>
+              </button>
+            </div>
           </div>
 
-          <div>
-            <label className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2 block">URL do Logotipo (PNG/SVG)</label>
-            <input 
-              type="text"
-              value={shopLogo}
-              onChange={(e) => setShopLogo(e.target.value)}
-              placeholder="https://sua-imagem.com/logo.png"
-              className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-amber-500 outline-none transition-colors"
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-6 p-4 bg-white/5 rounded-xl">
-          <Logo src={shopLogo || undefined} className="w-16 h-16" />
-          <div>
-            <p className="text-sm font-bold">{shopName || "Nome da Barbearia"}</p>
-            <p className="text-xs text-white/40 leading-relaxed italic">Prévia do logotipo acima</p>
+          <div className="bg-black/40 border border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4">
+            <Logo src={shopLogo || undefined} className="w-24 h-24" />
+            <div>
+              <p className="text-sm font-bold uppercase italic tracking-tighter text-amber-500">Visualização</p>
+              <p className="text-xl font-black uppercase italic tracking-tighter mt-1">{shopName || "Nome da Barbearia"}</p>
+            </div>
           </div>
         </div>
 
         <button
           onClick={updateShopInfo}
-          disabled={isSaving}
-          className="w-full bg-amber-500 hover:bg-amber-600 text-amber-950 px-8 py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 disabled:opacity-50"
+          disabled={isSaving || isUploading}
+          className="w-full bg-amber-500 hover:bg-amber-600 text-amber-950 px-8 py-5 rounded-xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {isSaving ? "Salvando..." : "Salvar Alterações"}
+          {isSaving ? "Salvando..." : "Salvar Alterações de Identidade"}
         </button>
       </div>
 
       <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-8 backdrop-blur-xl">
         <h2 className="text-lg font-bold text-red-500 mb-2 flex items-center gap-2">
           <Trash2 className="w-5 h-5" />
-          Zona de Perigo
+          Zona de Perigo (Sua Barbearia)
         </h2>
         <p className="text-sm text-white/40 mb-6 font-medium">
-          Ao clicar no botão abaixo, você irá excluir todos os registros de agendamentos (confirmados, pendentes e histórico) do banco de dados.
+          Ao clicar no botão abaixo, você irá excluir agendamentos e histórico financeiro <span className="text-red-500 font-bold uppercase italic">exclusivamente da sua barbearia</span>.
         </p>
 
         <button
-          onClick={clearAllData}
+          onClick={clearMyData}
           disabled={isDeleting}
-          className="w-full md:w-auto bg-red-500 hover:bg-red-600 text-white px-8 py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-8 py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all active:scale-95 disabled:opacity-50"
         >
-          {isDeleting ? "Limpando..." : "Limpar todos os dados do App"}
+          {isDeleting ? "Limpando..." : "Limpar Meus Dados"}
         </button>
       </div>
 

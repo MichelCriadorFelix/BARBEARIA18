@@ -4,8 +4,10 @@ import { format, startOfDay, endOfDay, addDays, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CheckCircle2, ChevronLeft, ChevronRight, Clock, User, XCircle, DollarSign, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function AdminAgenda() {
+  const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState<'agendamentos' | 'historico'>('agendamentos');
   const [date, setDate] = useState(new Date());
   const [agendamentos, setAgendamentos] = useState<any[]>([]);
@@ -51,7 +53,7 @@ export function AdminAgenda() {
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [date, activeTab]);
+  }, [date, activeTab, profile?.barbershop_id]);
 
   async function fetchServices() {
     try {
@@ -74,9 +76,10 @@ export function AdminAgenda() {
           .from("appointments")
           .select(`
             *,
-            profiles ( full_name, phone ),
+            profiles!inner ( full_name, phone, barbershop_id ),
             services ( name, price, duration )
           `)
+          .eq("profiles.barbershop_id", profile?.barbershop_id)
           .in("status", ["pending", "confirmed"])
           .gte("start_time", startOfDay(new Date()).toISOString()) // From today onwards
           .order("start_time", { ascending: true });
@@ -91,9 +94,10 @@ export function AdminAgenda() {
           .from("appointments")
           .select(`
             *,
-            profiles ( full_name, phone ),
+            profiles!inner ( full_name, phone, barbershop_id ),
             services ( name, price, duration )
           `)
+          .eq("profiles.barbershop_id", profile?.barbershop_id)
           .in("status", ["completed", "cancelled"])
           .gte("start_time", start)
           .lte("start_time", end)
