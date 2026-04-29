@@ -121,10 +121,12 @@ export function ClientBooking() {
 
   async function fetchServices() {
     try {
+      if (!profile?.barbershop_id) return;
       setLoadingServices(true);
       const { data, error } = await supabase
         .from("services")
         .select("*")
+        .eq("barbershop_id", profile.barbershop_id)
         .eq("active", true)
         .order("price", { ascending: true });
       if (error) throw error;

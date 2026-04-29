@@ -28,9 +28,26 @@ create table profiles (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 2. Tabela de Serviços (Catálogo)
+-- 1. Criar a Tabela de Barbearias
+create table barbershops (
+  id uuid primary key, -- Geralmente o mesmo ID do admin principal
+  name text,
+  logo_url text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Habilitar RLS e Politicas da barbearia
+alter table barbershops enable row level security;
+create policy "Read access on barbershops" on barbershops for select using (true);
+create policy "Insert/Update barbershops" on barbershops for all to authenticated using (auth.uid() = id) with check (auth.uid() = id);
+
+-- 2. Atualizar a Tabela de Perfis
+alter table profiles add column barbershop_id uuid references barbershops(id);
+
+-- 3. Atualizar a Tabela de Serviços (Catálogo)
 create table services (
   id uuid default uuid_generate_v4() primary key,
+  barbershop_id uuid references barbershops(id) not null,
   name text not null,
   price numeric not null,
   duration integer not null default 30, -- Em minutos, base do agendamento
@@ -38,7 +55,7 @@ create table services (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 3. Tabela de Agendamentos
+-- 4. Tabela de Agendamentos
 create table appointments (
   id uuid default uuid_generate_v4() primary key,
   client_id uuid references profiles(id) not null,
@@ -52,9 +69,10 @@ create table appointments (
 -- Habilitar o modo Realtime para atualizações em tempo real 
 alter publication supabase_realtime add table appointments;
 
--- 4. Tabela de Transações (CRM Financeiro)
+-- 5. Tabela de Transações (CRM Financeiro)
 create table transactions (
   id uuid default uuid_generate_v4() primary key,
+  barbershop_id uuid references barbershops(id) not null,
   type text check (type in ('income', 'expense', 'fixed_cost', 'variable_cost')) not null,
   amount numeric not null,
   description text not null,

@@ -153,10 +153,12 @@ export function AdminServices() {
   }
 
   async function fetchServices() {
+    if (!shopId) return;
     setLoading(true);
     const { data, error } = await supabase
       .from("services")
       .select("*")
+      .eq("barbershop_id", shopId)
       .order("created_at", { ascending: true });
     if (!error && data) setServices(data);
     setLoading(false);
@@ -180,7 +182,10 @@ export function AdminServices() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!shopId) return;
+
     const payload = {
+      barbershop_id: shopId,
       name,
       price: parseFloat(price),
       duration: parseInt(duration, 10),

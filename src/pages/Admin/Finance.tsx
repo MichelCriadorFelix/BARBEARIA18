@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Edit2, Trash2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
@@ -13,6 +14,7 @@ interface Transaction {
 }
 
 export function AdminFinance() {
+  const { profile } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -25,7 +27,9 @@ export function AdminFinance() {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   useEffect(() => {
-    fetchData(true);
+    if (profile?.barbershop_id) {
+       fetchData(true);
+    }
 
     // Adiciona listener em tempo real para transações
     const channel = supabase
@@ -35,26 +39,28 @@ export function AdminFinance() {
         schema: 'public', 
         table: 'transactions' 
       }, () => {
-        fetchData(false);
+        if (profile?.barbershop_id) fetchData(false);
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [profile?.barbershop_id]);
 
   async function fetchData(showLoading = true) {
     const isInitialLoad = transactions.length === 0;
     if (showLoading || isInitialLoad) setLoading(true);
     
     try {
+      if (!profile?.barbershop_id) return;
       // Get last 3 months starting from the 1st of 2 months ago
       const startDate = format(startOfMonth(subMonths(new Date(), 2)), "yyyy-MM-dd");
       
       const { data, error } = await supabase
         .from("transactions")
         .select("*")
+        .eq("barbershop_id", profile.barbershop_id)
         .gte("date", startDate)
         .order("date", { ascending: false });
         
@@ -69,6 +75,8 @@ export function AdminFinance() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!profile?.barbershop_id) return;
+
     if (editingId) {
       await supabase.from("transactions").update({
         type,
@@ -78,6 +86,7 @@ export function AdminFinance() {
       }).eq("id", editingId);
     } else {
       await supabase.from("transactions").insert({
+        barbershop_id: profile.barbershop_id,
         type,
         amount: parseFloat(amount),
         description,
