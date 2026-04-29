@@ -153,7 +153,10 @@ create trigger on_auth_user_created
 -- Atualizar políticas de Profiles
 alter table profiles enable row level security;
 drop policy if exists "Read profiles" on profiles;
-create policy "Read profiles" on profiles for select to authenticated using (true);
+create policy "Read profiles" on profiles for select to authenticated using (
+  auth.uid() = id OR 
+  (select barbershop_id from profiles where id = auth.uid()) = barbershop_id
+);
 
 drop policy if exists "Insert profiles" on profiles;
 create policy "Insert profiles" on profiles for insert to authenticated with check (auth.uid() = id);
@@ -161,13 +164,13 @@ create policy "Insert profiles" on profiles for insert to authenticated with che
 drop policy if exists "Update profiles" on profiles;
 create policy "Update profiles" on profiles for update to authenticated using (
   auth.uid() = id OR 
-  (SELECT role FROM profiles WHERE id = auth.uid()) IN ('master', 'barber')
+  (select role from profiles where id = auth.uid()) in ('master', 'barber')
 );
 
 -- Atualizar políticas de Services
 alter table services enable row level security;
 drop policy if exists "Read access on services for authenticated" on services;
-create policy "Read access on services for authenticated" on services for select to authenticated using (true);
+create policy "Read access on services for authenticated" on services for select using (true);
 
 drop policy if exists "Admin can insert services" on services;
 create policy "Admin can insert services" on services for all to authenticated using (
@@ -177,7 +180,16 @@ create policy "Admin can insert services" on services for all to authenticated u
 -- Atualizar políticas de Appointments
 alter table appointments enable row level security;
 drop policy if exists "Read appointments" on appointments;
-create policy "Read appointments" on appointments for select to authenticated using (true);
+create policy "Read appointments" on appointments for select to authenticated using (
+  client_id = auth.uid() OR 
+  exists (
+    select 1 from profiles p 
+    join services s on s.barbershop_id = p.barbershop_id
+    where p.id = auth.uid() 
+    and s.id = appointments.service_id
+    and p.role in ('master', 'barber')
+  )
+);
 
 drop policy if exists "Insert appointments" on appointments;
 create policy "Insert appointments" on appointments for insert to authenticated with check (
@@ -197,13 +209,13 @@ create policy "Admin transactions" on transactions for all to authenticated usin
     select 1 from profiles 
     where id = auth.uid() 
     and role in ('master', 'barber') 
-    and (barbershop_id = transactions.barbershop_id OR id = transactions.barbershop_id)
+    and barbershop_id = transactions.barbershop_id
   )
 ) with check (
   exists (
     select 1 from profiles 
     where id = auth.uid() 
     and role in ('master', 'barber') 
-    and (barbershop_id = transactions.barbershop_id OR id = transactions.barbershop_id)
+    and barbershop_id = transactions.barbershop_id
   )
 );

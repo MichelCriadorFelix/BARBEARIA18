@@ -35,7 +35,7 @@ export function AppLayout() {
           .maybeSingle();
 
         if (data) {
-          console.log("Barbershop data fetched successfully:", data);
+          // Barbershop data fetched successfully
           if (data.name && data.name.trim() !== "") {
             setBarbershopName(data.name);
           } else {

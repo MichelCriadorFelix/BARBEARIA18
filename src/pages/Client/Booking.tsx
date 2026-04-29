@@ -92,7 +92,7 @@ export function ClientBooking() {
           table: "appointments",
         },
         (payload) => {
-          console.log("Database change detected, refreshing slots...", payload);
+          // refresh slots
           if (selectedDate && selectedService) {
             generateSlots(selectedDate, selectedService.duration);
           }

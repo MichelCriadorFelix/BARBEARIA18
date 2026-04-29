@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq("id", userId)
         .maybeSingle();
 
-      console.log("Fetch profile result for", userId, { data, error });
+      // profile fetch logic
 
       if (error) {
         console.error("Error fetching profile", error);
