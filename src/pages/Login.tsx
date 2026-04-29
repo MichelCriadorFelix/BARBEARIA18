@@ -32,7 +32,7 @@ export function Login() {
             .from("barbershops")
             .select("name, logo_url")
             .eq("id", referralId)
-            .single();
+            .maybeSingle();
           if (data) {
             if (data.name) setShopName(data.name);
             if (data.logo_url) setShopLogo(data.logo_url);

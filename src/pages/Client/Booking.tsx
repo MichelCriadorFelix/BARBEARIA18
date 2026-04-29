@@ -224,8 +224,8 @@ export function ClientBooking() {
 
       const { data: booked, error } = await supabase
         .from("appointments")
-        .select("start_time, end_time, profiles!inner(barbershop_id)")
-        .eq("profiles.barbershop_id", profile?.barbershop_id)
+        .select("start_time, end_time, services!inner(barbershop_id)")
+        .eq("services.barbershop_id", profile?.barbershop_id)
         .in("status", ["pending", "confirmed", "completed"])
         .gte("start_time", startRange)
         .lte("start_time", endRange);
@@ -292,8 +292,8 @@ export function ClientBooking() {
 
       const { data: currentBooked, error: fetchError } = await supabase
         .from("appointments")
-        .select("start_time, end_time, profiles!inner(barbershop_id)")
-        .eq("profiles.barbershop_id", profile?.barbershop_id)
+        .select("start_time, end_time, services!inner(barbershop_id)")
+        .eq("services.barbershop_id", profile?.barbershop_id)
         .in("status", ["pending", "confirmed", "completed"])
         .gte("start_time", startRange)
         .lte("start_time", endRange);
@@ -361,6 +361,21 @@ export function ClientBooking() {
       console.error("Clipboard copy failed:", err);
     }
   };
+
+  if (!profile?.barbershop_id && !loadingServices) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 space-y-4">
+        <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center border border-amber-500/20">
+          <Scissors className="w-10 h-10 text-amber-500" />
+        </div>
+        <h2 className="text-2xl font-bold text-white uppercase italic tracking-tight">Vínculo necessário</h2>
+        <p className="text-white/40 max-w-sm">
+          Você ainda não está vinculado a nenhuma barbearia. 
+          Solicite o link exclusivo ao seu barbeiro para acessar o catálogo e agenda.
+        </p>
+      </div>
+    );
+  }
 
   if (success) {
     return (

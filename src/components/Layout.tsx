@@ -32,7 +32,7 @@ export function AppLayout() {
           .from("barbershops")
           .select("name, logo_url")
           .eq("id", shopId)
-          .single();
+          .maybeSingle();
 
         if (data) {
           console.log("Barbershop data fetched successfully:", data);

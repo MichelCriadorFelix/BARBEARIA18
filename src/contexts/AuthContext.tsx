@@ -121,6 +121,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data) {
         const fullProfile = { ...data as Profile, email: currentUser.email || "" };
         
+        // Se for um barbeiro ou master, garantimos que ele tenha uma entrada na tabela barbershops
+        // para que o link de convite funcione (evita erro de chave estrangeira ao vincular cliente)
+        if (fullProfile.role === "master" || fullProfile.role === "barber") {
+          const shopId = fullProfile.barbershop_id || fullProfile.id;
+          try {
+            const { data: shopExists } = await supabase.from("barbershops").select("id").eq("id", shopId).maybeSingle();
+            if (!shopExists) {
+              console.log("Auto-provisioning barbershop for admin:", shopId);
+              await supabase.from("barbershops").upsert({
+                id: shopId,
+                name: "Minha Barbearia",
+                invite_code: shopId.substring(0, 8).toUpperCase()
+              });
+            }
+          } catch (err) {
+            console.warn("Failed to auto-provision barbershop:", err);
+          }
+        }
+
         // Se o client logou através de um link de convite, atualizaremos a barbearia vinculada
         const referralId = localStorage.getItem("barber_referral");
         if (referralId && fullProfile.role === "client" && fullProfile.barbershop_id !== referralId) {
