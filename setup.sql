@@ -6,8 +6,26 @@ create table if not exists barbershops (
   id uuid primary key, 
   name text,
   logo_url text,
+  invite_code text unique,
+  working_hours jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+-- Habilita políticas de storage para o bucket 'logos' e 'documentsbarbearia'
+-- Nota: O bucket deve ser criado manualmente no painel ou via API de infra, aqui garantimos as políticas.
+-- Independentemente, o ideal é usar a tabela para metadados.
+
+-- Adiciona colunas se a tabela já existia sem elas
+do $$ 
+begin 
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='barbershops' and column_name='invite_code') then 
+    alter table barbershops add column invite_code text unique; 
+  end if; 
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='barbershops' and column_name='working_hours') then 
+    alter table barbershops add column working_hours jsonb; 
+  end if; 
+end 
+$$;
 
 -- Ativar RLS e Criar Políticas para barbearias
 alter table barbershops enable row level security;

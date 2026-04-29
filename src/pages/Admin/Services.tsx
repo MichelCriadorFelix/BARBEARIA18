@@ -84,7 +84,7 @@ export function AdminServices() {
       setTimeout(() => setHoursSavedTime(null), 3000);
     } else {
       alert(
-        "Erro ao salvar horário de funcionamento. Verifique a permissão do seu Storage (documentsbarbearia).",
+        "Erro ao salvar horário de funcionamento. Verifique a conexão e permissões.",
       );
     }
   }

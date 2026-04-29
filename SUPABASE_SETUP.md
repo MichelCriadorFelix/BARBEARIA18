@@ -28,21 +28,33 @@ create table profiles (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 1. Criar a Tabela de Barbearias
+-- 1. Tabela de Barbearias
 create table barbershops (
-  id uuid primary key, -- Geralmente o mesmo ID do admin principal
+  id uuid primary key, 
   name text,
   logo_url text,
+  invite_code text unique,
+  working_hours jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Habilitar RLS e Politicas da barbearia
+-- Ativar RLS e políticas
 alter table barbershops enable row level security;
 create policy "Read access on barbershops" on barbershops for select using (true);
-create policy "Insert/Update barbershops" on barbershops for all to authenticated using (auth.uid() = id) with check (auth.uid() = id);
+create policy "Insert/Update barbershops" on barbershops for all to authenticated using (
+  auth.uid() = id OR 
+  id = (select barbershop_id from profiles where id = auth.uid() and role in ('master', 'barber'))
+);
 
--- 2. Atualizar a Tabela de Perfis
-alter table profiles add column barbershop_id uuid references barbershops(id);
+-- 2. Tabela de Perfis
+create table profiles (
+  id uuid references auth.users on delete cascade primary key,
+  role text check (role in ('master', 'barber', 'client')) default 'client',
+  full_name text,
+  phone text,
+  barbershop_id uuid references barbershops(id),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
 
 -- 3. Atualizar a Tabela de Serviços (Catálogo)
 create table services (

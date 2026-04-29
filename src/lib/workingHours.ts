@@ -27,19 +27,22 @@ export const defaultBusinessHours: BusinessHours = {
 
 export async function fetchBusinessHours(shopId: string): Promise<BusinessHours> {
   try {
-    const fileName = `working_hours_${shopId}.json`;
-    const { data } = supabase.storage
-      .from("documentsbarbearia")
-      .getPublicUrl(fileName);
-    if (!data?.publicUrl) return defaultBusinessHours;
+    const { data, error } = await supabase
+      .from("barbershops")
+      .select("working_hours")
+      .eq("id", shopId)
+      .maybeSingle();
 
-    // Buscamos sem cache para garantir que sempre refletirá as mudanças
-    const res = await fetch(data.publicUrl + "?t=" + new Date().getTime());
-    if (!res.ok) {
+    if (error) {
+      console.error("Error fetching business hours from DB:", error);
       return defaultBusinessHours;
     }
-    const json = await res.json();
-    return json as BusinessHours;
+
+    if (data?.working_hours) {
+      return data.working_hours as BusinessHours;
+    }
+    
+    return defaultBusinessHours;
   } catch (error) {
     console.error("Failed to fetch business hours", error);
     return defaultBusinessHours;
@@ -51,22 +54,10 @@ export async function saveBusinessHours(
   hours: BusinessHours,
 ): Promise<boolean> {
   try {
-    const fileName = `working_hours_${shopId}.json`;
-    const file = new Blob([JSON.stringify(hours)], {
-      type: "application/json",
-    });
-
-    // Remove old first to ensure update (Supabase sometimes caches upserts otherwise)
-    await supabase.storage
-      .from("documentsbarbearia")
-      .remove([fileName]);
-
-    const { error } = await supabase.storage
-      .from("documentsbarbearia")
-      .upload(fileName, file, {
-        cacheControl: "0",
-        upsert: true,
-      });
+    const { error } = await supabase
+      .from("barbershops")
+      .update({ working_hours: hours })
+      .eq("id", shopId);
 
     if (error) throw error;
     return true;
