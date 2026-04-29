@@ -84,7 +84,7 @@ export function AdminServices() {
       setTimeout(() => setHoursSavedTime(null), 3000);
     } else {
       alert(
-        "Erro ao salvar horário de funcionamento. Verifique a conexão e permissões.",
+        "Erro ao salvar horário de funcionamento. Verifique se você executou o SQL de atualização no painel do Supabase (Coluna 'working_hours' na tabela 'barbershops').",
       );
     }
   }

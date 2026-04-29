@@ -19,12 +19,13 @@ Vá até a aba **SQL Editor** no painel do Supabase, crie uma nova query, cole o
 -- Habilitar extensão de UUID
 create extension if not exists "uuid-ossp";
 
--- 1. Tabela de Perfis
+-- 2. Tabela de Perfis
 create table profiles (
   id uuid references auth.users on delete cascade primary key,
-  role text check (role in ('admin', 'user', 'client')) default 'user',
+  role text check (role in ('master', 'barber', 'client')) default 'client',
   full_name text,
   phone text,
+  barbershop_id uuid references barbershops(id),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -44,16 +45,6 @@ create policy "Read access on barbershops" on barbershops for select using (true
 create policy "Insert/Update barbershops" on barbershops for all to authenticated using (
   auth.uid() = id OR 
   id = (select barbershop_id from profiles where id = auth.uid() and role in ('master', 'barber'))
-);
-
--- 2. Tabela de Perfis
-create table profiles (
-  id uuid references auth.users on delete cascade primary key,
-  role text check (role in ('master', 'barber', 'client')) default 'client',
-  full_name text,
-  phone text,
-  barbershop_id uuid references barbershops(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- 3. Atualizar a Tabela de Serviços (Catálogo)
@@ -96,7 +87,7 @@ create table transactions (
 -- -----------------------------------------------------
 -- Trigger Automático: Criar perfil ao registrar usuário (Compatível com Google)
 -- -----------------------------------------------------
-create function public.handle_new_user()
+create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer set search_path = ''
@@ -107,7 +98,7 @@ begin
     new.id, 
     -- Resgatar o nome vindo do provider oauth (ex: Google)
     coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', 'Usuário'), 
-    'user'
+    'client'
   );
   return new;
 end;
@@ -128,7 +119,7 @@ alter table transactions enable row level security;
 -- Todos os usuários logados podem ler o catálogo de serviços
 create policy "Read access on services for authenticated" on services for select to authenticated using (true);
 create policy "Admin can insert services" on services for all to authenticated using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+  exists (select 1 from profiles where id = auth.uid() and role in ('master', 'barber'))
 );
 
 -- Perfis: Podem ver todos os perfis, inserir seu próprio, e Admins podem editar qualquer perfil
@@ -136,21 +127,21 @@ create policy "Read profiles" on profiles for select to authenticated using (tru
 create policy "Insert profiles" on profiles for insert to authenticated with check (auth.uid() = id);
 create policy "Update profiles" on profiles for update to authenticated using (
   auth.uid() = id OR 
-  (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+  (SELECT role FROM profiles WHERE id = auth.uid()) IN ('master', 'barber')
 );
 
 -- Agendamentos: Todos autênticados podem ver os horários (para ver disponibilidade), mas somente o dono ou admin edita
 create policy "Read appointments" on appointments for select to authenticated using (true);
 create policy "Insert appointments" on appointments for insert to authenticated with check (
-  client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+  client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role in ('master', 'barber'))
 );
 create policy "Update appointments" on appointments for update to authenticated using (
-  client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+  client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role in ('master', 'barber'))
 );
 
 -- Transações Financeiras: Somente Admin
 create policy "Admin transactions" on transactions for all to authenticated using (
-  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+  exists (select 1 from profiles where id = auth.uid() and role in ('master', 'barber'))
 );
 
 -- -----------------------------------------------------
