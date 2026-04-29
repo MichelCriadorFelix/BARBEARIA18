@@ -119,7 +119,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data) {
-        setProfile({ ...data as Profile, email: currentUser.email || "" });
+        const fullProfile = { ...data as Profile, email: currentUser.email || "" };
+        
+        // Se o client logou através de um link de convite, atualizaremos a barbearia vinculada
+        const referralId = localStorage.getItem("barber_referral");
+        if (referralId && fullProfile.role === "client" && fullProfile.barbershop_id !== referralId) {
+          console.log("Vinculando cliente à barbearia do convite:", referralId);
+          fullProfile.barbershop_id = referralId;
+          
+          await supabase.from("profiles").update({ 
+            barbershop_id: referralId 
+          }).eq("id", userId);
+          
+          // Removemos o referral após atualizar com sucesso
+          localStorage.removeItem("barber_referral");
+        }
+        
+        setProfile(fullProfile);
       } else {
         console.warn("Profile not found in database. Setting fallback profile...");
 

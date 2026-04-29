@@ -44,7 +44,7 @@ export function AppLayout() {
     }
 
     fetchBarbershopInfo();
-  }, [profile?.barbershop_id]);
+  }, [profile?.barbershop_id, profile?.id, isAdmin]);
 
   const clientLinks = [
     { name: "Agendar", href: "/", icon: Calendar },

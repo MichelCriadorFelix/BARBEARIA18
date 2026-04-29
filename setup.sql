@@ -11,16 +11,17 @@ create table if not exists barbershops (
 
 -- Ativar RLS e Criar Políticas para barbearias
 alter table barbershops enable row level security;
-do $$
-begin
-  if not exists (select 1 from pg_policies where policyname = 'Read access on barbershops' and tablename = 'barbershops') then
-    create policy "Read access on barbershops" on barbershops for select using (true);
-  end if;
-  if not exists (select 1 from pg_policies where policyname = 'Insert/Update barbershops' and tablename = 'barbershops') then
-    create policy "Insert/Update barbershops" on barbershops for all to authenticated using (auth.uid() = id) with check (auth.uid() = id);
-  end if;
-end
-$$;
+drop policy if exists "Read access on barbershops" on barbershops;
+create policy "Read access on barbershops" on barbershops for select using (true);
+
+drop policy if exists "Insert/Update barbershops" on barbershops;
+create policy "Insert/Update barbershops" on barbershops for all to authenticated using (
+  auth.uid() = id OR 
+  id = (select barbershop_id from profiles where id = auth.uid() and role in ('master', 'barber'))
+) with check (
+  auth.uid() = id OR 
+  id = (select barbershop_id from profiles where id = auth.uid() and role in ('master', 'barber'))
+);
 
 -- 2. Atualizar a Tabela de Perfis de forma segura
 do $$ 

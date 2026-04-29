@@ -42,7 +42,7 @@ export function AdminSettings() {
       }
     }
     loadShopData();
-  }, [profile?.barbershop_id]);
+  }, [profile?.barbershop_id, profile?.id]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
