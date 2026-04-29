@@ -37,6 +37,16 @@ export function AppLayout() {
         if (data) {
           if (data.name) setBarbershopName(data.name);
           if (data.logo_url) setBarbershopLogo(data.logo_url);
+        } else if (error && error.code === 'PGRST116' && isAdmin) {
+          // No row exists. Auto initialize it for the barber/master.
+          await supabase.from("barbershops").upsert({
+            id: shopId,
+            name: "Barbearia", 
+            logo_url: null
+          });
+          if (!profile?.barbershop_id) {
+             await supabase.from("profiles").update({ barbershop_id: shopId }).eq("id", profile.id);
+          }
         }
       } catch (err) {
         console.error("Error fetching barbershop info", err);

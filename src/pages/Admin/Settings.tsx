@@ -81,11 +81,6 @@ export function AdminSettings() {
       const shopId = profile?.barbershop_id || profile?.id;
       if (!shopId) return;
 
-      // Se o barber não tem barbershop_id no profile ainda, atualiza o profile dele
-      if (!profile?.barbershop_id) {
-        await supabase.from("profiles").update({ barbershop_id: shopId }).eq("id", profile?.id);
-      }
-
       const { error } = await supabase
         .from("barbershops")
         .upsert({
@@ -95,6 +90,12 @@ export function AdminSettings() {
         });
 
       if (error) throw error;
+
+      // Se o barber não tem barbershop_id no profile ainda, atualiza o profile dele
+      if (!profile?.barbershop_id) {
+        await supabase.from("profiles").update({ barbershop_id: shopId }).eq("id", profile?.id);
+      }
+
       setMessage({ type: "success", text: "Informações atualizadas com sucesso!" });
       setTimeout(() => window.location.reload(), 1500);
     } catch (err) {
