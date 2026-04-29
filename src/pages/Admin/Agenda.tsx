@@ -123,13 +123,18 @@ export function AdminAgenda() {
       }
       
       // Auto-faturamento no CRM
-      await supabase.from("transactions").insert({
+      const { error: txError } = await supabase.from("transactions").insert({
+        barbershop_id: profile?.barbershop_id,
         type: 'income',
         amount: servicePrice,
         description: desc,
         appointment_id: id,
         date: format(new Date(), 'yyyy-MM-dd')
       });
+
+      if (txError) {
+        console.error("Failed to record transaction in CRM:", txError);
+      }
     }
 
     await supabase.from("appointments").update({ status }).eq("id", id);
@@ -198,6 +203,7 @@ export function AdminAgenda() {
 
       // Insert directly into transactions
       const { error } = await supabase.from("transactions").insert({
+        barbershop_id: profile?.barbershop_id,
         type: 'income',
         amount: selectedService.price,
         description: desc,

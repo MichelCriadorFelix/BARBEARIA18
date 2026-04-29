@@ -256,8 +256,8 @@ export function AdminFinance() {
                 <select value={type} onChange={e => setType(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 backdrop-blur-md">
                   <option value="fixed_cost">Custo Fixo (Aluguel, Luz)</option>
                   <option value="variable_cost">Custo Variável (Lâminas, Produtos)</option>
-                  <option value="expense">Outra Despesa</option>
-                  {type === 'income' && <option value="income">Receita (Cortes etc)</option>}
+                  <option value="expense">Outra Despesa / Retirada</option>
+                  <option value="income">Receita (Entrada Manual)</option>
                 </select>
               </div>
               <div>

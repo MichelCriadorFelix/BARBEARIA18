@@ -193,5 +193,17 @@ create policy "Update appointments" on appointments for update to authenticated 
 alter table transactions enable row level security;
 drop policy if exists "Admin transactions" on transactions;
 create policy "Admin transactions" on transactions for all to authenticated using (
-  exists (select 1 from profiles where id = auth.uid() and role in ('master', 'barber'))
+  exists (
+    select 1 from profiles 
+    where id = auth.uid() 
+    and role in ('master', 'barber') 
+    and (barbershop_id = transactions.barbershop_id OR id = transactions.barbershop_id)
+  )
+) with check (
+  exists (
+    select 1 from profiles 
+    where id = auth.uid() 
+    and role in ('master', 'barber') 
+    and (barbershop_id = transactions.barbershop_id OR id = transactions.barbershop_id)
+  )
 );
