@@ -94,6 +94,62 @@ export function AdminFinance() {
     }
   }
 
+  async function handleSyncAppointments() {
+    if (!profile?.barbershop_id) return;
+    setLoading(true);
+    try {
+      // 1. Buscar todos os agendamentos concluídos
+      const { data: appointments } = await supabase
+        .from("appointments")
+        .select("*, services(*)")
+        .eq("barbershop_id", profile.barbershop_id)
+        .eq("status", "completed");
+
+      if (!appointments || appointments.length === 0) {
+        alert("Nenhum corte concluído encontrado para sincronizar.");
+        return;
+      }
+
+      // 2. Buscar transações que já vinculadas a agendamentos
+      const { data: existingTxs } = await supabase
+        .from("transactions")
+        .select("appointment_id")
+        .eq("barbershop_id", profile.barbershop_id)
+        .not("appointment_id", "is", null);
+
+      const syncedIds = new Set(existingTxs?.map(t => t.appointment_id) || []);
+
+      // 3. Identificar agendamentos que faltam no CRM
+      const missing = appointments.filter(a => !syncedIds.has(a.id));
+
+      if (missing.length === 0) {
+        alert("Todas as transações já estão sincronizadas.");
+        return;
+      }
+
+      // 4. Inserir agendamentos faltantes
+      const toInsert = missing.map(a => ({
+        barbershop_id: profile.barbershop_id,
+        type: "income",
+        amount: a.services?.price || 0,
+        description: `Corte Concluído: ${a.client_name || "Cliente"} (${a.services?.name || "Serviço"})`,
+        date: a.date,
+        appointment_id: a.id
+      }));
+
+      const { error } = await supabase.from("transactions").insert(toInsert);
+      if (error) throw error;
+
+      alert(`${missing.length} transações foram sincronizadas com sucesso!`);
+      fetchData(true);
+    } catch (err) {
+      console.error("Error syncing appointments:", err);
+      alert("Erro ao sincronizar. Verifique o console.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleImportFixedCosts() {
     if (!profile?.barbershop_id) return;
     setLoading(true);
@@ -264,9 +320,17 @@ export function AdminFinance() {
             onClick={handleImportFixedCosts}
             className="text-amber-500 hover:text-amber-400 text-xs font-bold border border-amber-500/20 px-3 py-1.5 rounded-lg hover:bg-amber-500/10 transition-colors ml-auto"
           >
-            Importar Custos Fixos do Mês Anterior
+            Importar Custos Fixos
           </button>
         )}
+        
+        <button 
+          onClick={handleSyncAppointments}
+          className="text-white/60 hover:text-white text-xs font-bold border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors ml-auto"
+          title="Verifica se há cortes concluídos que não entraram no financeiro"
+        >
+          Sincronizar Cortes com CRM
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

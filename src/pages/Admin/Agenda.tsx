@@ -201,8 +201,7 @@ export function AdminAgenda() {
 
       const desc = `Atendimento Avulso: ${selectedService.name} - ${walkInClientName} | Pagamento: ${methodLabels[walkInPaymentMethod]} ${changeDetails}`;
 
-      // Insert directly into transactions
-      const { error } = await supabase.from("transactions").insert({
+      const { error: txError } = await supabase.from("transactions").insert({
         barbershop_id: profile?.barbershop_id,
         type: 'income',
         amount: selectedService.price,
@@ -210,13 +209,13 @@ export function AdminAgenda() {
         date: format(new Date(), 'yyyy-MM-dd')
       });
 
-      if (error) throw error;
+      if (txError) throw txError;
 
       setShowWalkInModal(false);
       setWalkInClientName("");
       setWalkInPaymentMethod("pix");
       setWalkInAmountReceived("");
-      alert("Atendimento avulso registrado no Financeiro com sucesso!");
+      alert("Atendimento extra registrado no CRM com sucesso!");
     } catch (err) {
       console.error("Erro ao registrar atendimento avulso:", err);
       alert("Erro ao registrar. Tente novamente.");
