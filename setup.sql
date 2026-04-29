@@ -76,7 +76,16 @@ create table if not exists appointments (
 );
 
 -- Habilitar o modo Realtime para atualizações em tempo real 
-alter publication supabase_realtime add table appointments;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables 
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'appointments'
+  ) then
+    alter publication supabase_realtime add table appointments;
+  end if;
+end
+$$;
 
 -- 5. Tabela de Transações (CRM Financeiro) de forma segura
 do $$ 
