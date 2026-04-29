@@ -55,11 +55,14 @@ export function ClientBooking() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    loadBusinessData();
-  }, []);
+    if (profile?.barbershop_id) {
+      loadBusinessData();
+    }
+  }, [profile?.barbershop_id]);
 
   async function loadBusinessData() {
-    const hours = await fetchBusinessHours();
+    if (!profile?.barbershop_id) return;
+    const hours = await fetchBusinessHours(profile.barbershop_id);
     setBusinessHours(hours);
     fetchServices();
   }
@@ -286,7 +289,8 @@ export function ClientBooking() {
 
       const { data: currentBooked, error: fetchError } = await supabase
         .from("appointments")
-        .select("start_time, end_time")
+        .select("start_time, end_time, profiles!inner(barbershop_id)")
+        .eq("profiles.barbershop_id", profile?.barbershop_id)
         .in("status", ["pending", "confirmed", "completed"])
         .gte("start_time", startRange)
         .lte("start_time", endRange);

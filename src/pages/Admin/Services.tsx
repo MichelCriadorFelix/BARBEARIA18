@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 import { Plus, Edit2, Trash2, Clock, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -41,6 +42,9 @@ function generateTimeOptions() {
 const TIME_OPTIONS = generateTimeOptions();
 
 export function AdminServices() {
+  const { profile } = useAuth();
+  const shopId = profile?.barbershop_id || profile?.id;
+  
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,20 +62,22 @@ export function AdminServices() {
   const [hoursSavedTime, setHoursSavedTime] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchServices();
-    loadHours();
-  }, []);
+    if (shopId) {
+      fetchServices();
+      loadHours();
+    }
+  }, [shopId]);
 
   async function loadHours() {
     setLoadingHours(true);
-    const hours = await fetchBusinessHours();
+    const hours = await fetchBusinessHours(shopId as string);
     setBusinessHours(hours);
     setLoadingHours(false);
   }
 
   async function handleSaveHours() {
     setSavingHours(true);
-    const success = await saveBusinessHours(businessHours);
+    const success = await saveBusinessHours(shopId as string, businessHours);
     setSavingHours(false);
     if (success) {
       setHoursSavedTime(Date.now());

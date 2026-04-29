@@ -15,8 +15,9 @@ export function AdminSettings() {
   const [shopLogo, setShopLogo] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const inviteLink = profile?.barbershop_id 
-    ? `${window.location.origin}/login?ref=${profile.barbershop_id}`
+  const inviteShopId = profile?.barbershop_id || profile?.id;
+  const inviteLink = inviteShopId 
+    ? `${window.location.origin}/login?ref=${inviteShopId}`
     : `${window.location.origin}/login`;
 
   const copyInviteLink = () => {
@@ -27,11 +28,12 @@ export function AdminSettings() {
 
   React.useEffect(() => {
     async function loadShopData() {
-      if (!profile?.barbershop_id) return;
+      const shopId = profile?.barbershop_id || profile?.id;
+      if (!shopId) return;
       const { data } = await supabase
         .from("barbershops")
         .select("name, logo_url")
-        .eq("id", profile.barbershop_id)
+        .eq("id", shopId)
         .single();
       
       if (data) {
@@ -44,12 +46,13 @@ export function AdminSettings() {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !profile?.barbershop_id) return;
+    const shopId = profile?.barbershop_id || profile?.id;
+    if (!file || !shopId) return;
 
     setIsUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${profile.barbershop_id}-${Date.now()}.${fileExt}`;
+      const fileName = `${shopId}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -73,16 +76,23 @@ export function AdminSettings() {
   };
 
   async function updateShopInfo() {
-    if (!profile?.barbershop_id) return;
     setIsSaving(true);
     try {
+      const shopId = profile?.barbershop_id || profile?.id;
+      if (!shopId) return;
+
+      // Se o barber não tem barbershop_id no profile ainda, atualiza o profile dele
+      if (!profile?.barbershop_id) {
+        await supabase.from("profiles").update({ barbershop_id: shopId }).eq("id", profile?.id);
+      }
+
       const { error } = await supabase
         .from("barbershops")
-        .update({
+        .upsert({
+          id: shopId,
           name: shopName,
           logo_url: shopLogo
-        })
-        .eq("id", profile.barbershop_id);
+        });
 
       if (error) throw error;
       setMessage({ type: "success", text: "Informações atualizadas com sucesso!" });
@@ -96,7 +106,8 @@ export function AdminSettings() {
   }
 
   async function clearMyData() {
-    if (!profile?.barbershop_id) return;
+    const shopId = profile?.barbershop_id || profile?.id;
+    if (!shopId) return;
     if (!confirm("TEM CERTEZA? Isso vai apagar APENAS os agendamentos e transações desta barbearia. Esta ação não poderá ser desfeita.")) return;
 
     try {
@@ -105,7 +116,7 @@ export function AdminSettings() {
       const { data: myAppointments } = await supabase
         .from('appointments')
         .select('id, profiles!inner(barbershop_id)')
-        .eq('profiles.barbershop_id', profile.barbershop_id);
+        .eq('profiles.barbershop_id', shopId);
 
       const appointmentIds = myAppointments?.map(a => a.id) || [];
 

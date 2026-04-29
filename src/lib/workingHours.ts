@@ -25,11 +25,12 @@ export const defaultBusinessHours: BusinessHours = {
   6: { isOpen: true, openTime: "08:00", closeTime: "20:00", breaks: [] },
 };
 
-export async function fetchBusinessHours(): Promise<BusinessHours> {
+export async function fetchBusinessHours(shopId: string): Promise<BusinessHours> {
   try {
+    const fileName = `working_hours_${shopId}.json`;
     const { data } = supabase.storage
       .from("documentsbarbearia")
-      .getPublicUrl("working_hours.json");
+      .getPublicUrl(fileName);
     if (!data?.publicUrl) return defaultBusinessHours;
 
     // Buscamos sem cache para garantir que sempre refletirá as mudanças
@@ -46,9 +47,11 @@ export async function fetchBusinessHours(): Promise<BusinessHours> {
 }
 
 export async function saveBusinessHours(
+  shopId: string,
   hours: BusinessHours,
 ): Promise<boolean> {
   try {
+    const fileName = `working_hours_${shopId}.json`;
     const file = new Blob([JSON.stringify(hours)], {
       type: "application/json",
     });
@@ -56,11 +59,11 @@ export async function saveBusinessHours(
     // Remove old first to ensure update (Supabase sometimes caches upserts otherwise)
     await supabase.storage
       .from("documentsbarbearia")
-      .remove(["working_hours.json"]);
+      .remove([fileName]);
 
     const { error } = await supabase.storage
       .from("documentsbarbearia")
-      .upload("working_hours.json", file, {
+      .upload(fileName, file, {
         cacheControl: "0",
         upsert: true,
       });

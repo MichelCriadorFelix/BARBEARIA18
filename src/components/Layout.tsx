@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { Calendar, User, Scissors, LogOut, LayoutDashboard, DollarSign, ListTodo, Clock, Settings, Users } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,13 +24,14 @@ export function AppLayout() {
 
   useEffect(() => {
     async function fetchBarbershopInfo() {
-      if (!profile?.barbershop_id) return;
+      const shopId = profile?.barbershop_id || (isAdmin ? profile?.id : null);
+      if (!shopId) return;
       
       try {
         const { data, error } = await supabase
           .from("barbershops")
           .select("name, logo_url")
-          .eq("id", profile.barbershop_id)
+          .eq("id", shopId)
           .single();
 
         if (data) {
