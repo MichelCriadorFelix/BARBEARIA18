@@ -48,6 +48,7 @@ import { AdminFinance } from "@/pages/Admin/Finance";
 import { AdminServices } from "@/pages/Admin/Services";
 import { AdminSettings } from "@/pages/Admin/Settings";
 import { AdminUsers } from "@/pages/Admin/Users";
+import { AdminClients } from "@/pages/Admin/Clients";
 
 function OAuthCallback() {
   React.useEffect(() => {
@@ -168,6 +169,7 @@ function RoutesRenderer() {
         {/* Admin/Barber Routes */}
         <Route path="/admin/finance" element={<ProtectedRoute adminOnly><AdminFinance /></ProtectedRoute>} />
         <Route path="/admin/services" element={<ProtectedRoute adminOnly><AdminServices /></ProtectedRoute>} />
+        <Route path="/admin/clients" element={<ProtectedRoute adminOnly><AdminClients /></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminSettings /></ProtectedRoute>} />
 
         {/* SuperAdmin only (Master) */}

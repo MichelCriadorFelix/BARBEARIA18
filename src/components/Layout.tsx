@@ -51,6 +51,7 @@ export function AppLayout() {
 
   const adminLinks = [
     { name: "Agenda", href: "/", icon: Calendar },
+    { name: "Clientes", href: "/admin/clients", icon: Users },
     { name: "Finanças / CRM", href: "/admin/finance", icon: DollarSign },
     { name: "Serviços", href: "/admin/services", icon: ListTodo },
     ...(isSuperAdmin ? [{ name: "Equipe / Admins", href: "/admin/users", icon: Users }] : []),
