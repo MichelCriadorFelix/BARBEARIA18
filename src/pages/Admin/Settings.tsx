@@ -81,13 +81,16 @@ export function AdminSettings() {
       const shopId = profile?.barbershop_id || profile?.id;
       if (!shopId) return;
 
+      const payload: any = {
+        id: shopId,
+        name: shopName,
+        logo_url: shopLogo
+      };
+      payload.invite_code = shopId.substring(0, 8).toUpperCase();
+
       const { error } = await supabase
         .from("barbershops")
-        .upsert({
-          id: shopId,
-          name: shopName,
-          logo_url: shopLogo
-        });
+        .upsert(payload);
 
       if (error) throw error;
 
@@ -178,8 +181,9 @@ export function AdminSettings() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-6">
             <div>
-              <label className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2 block">Nome da Barbearia</label>
+              <label htmlFor="shopName" className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2 block">Nome da Barbearia</label>
               <input 
+                id="shopName"
                 type="text"
                 value={shopName}
                 onChange={(e) => setShopName(e.target.value)}
@@ -189,8 +193,9 @@ export function AdminSettings() {
             </div>
 
             <div>
-              <label className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2 block">Logotipo</label>
+              <label htmlFor="shopLogo" className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2 block">Logotipo</label>
               <input 
+                id="shopLogo"
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileUpload}

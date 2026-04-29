@@ -179,6 +179,7 @@ export function ClientBooking() {
 
   async function generateSlots(date: Date, durationStr: number) {
     try {
+      if (!profile?.barbershop_id) return;
       setLoadingSlots(true);
       setSelectedSlot(null);
       const durationMins = Number(durationStr) || 30;
@@ -277,7 +278,7 @@ export function ClientBooking() {
   }
 
   async function handleBook() {
-    if (!selectedSlot || !selectedService || !profile) return;
+    if (!selectedSlot || !selectedService || !profile || !profile.barbershop_id) return;
 
     setIsBooking(true);
     const endTime = new Date(

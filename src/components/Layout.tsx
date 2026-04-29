@@ -46,11 +46,15 @@ export function AppLayout() {
         } else if (error && error.code === 'PGRST116' && isAdmin) {
           console.log("Barbershop not found. Initializing auto for shopId:", shopId);
           // No row exists. Auto initialize it for the barber/master.
-          await supabase.from("barbershops").upsert({
-            id: shopId,
-            name: "Barbearia", 
-            logo_url: null
-          });
+           const payload: any = {
+             id: shopId,
+             name: "Barbearia",
+             logo_url: null
+           };
+           // Add invite_code arbitrarily to bypass a strict not-null constraint that might exist in the user's DB
+           payload.invite_code = shopId.substring(0, 8).toUpperCase();
+           
+          await supabase.from("barbershops").upsert(payload);
           if (!profile?.barbershop_id) {
              await supabase.from("profiles").update({ barbershop_id: shopId }).eq("id", profile.id);
           }

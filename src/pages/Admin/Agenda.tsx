@@ -69,6 +69,8 @@ export function AdminAgenda() {
 
   async function fetchData(showLoading = true) {
     try {
+      if (!profile?.barbershop_id) return;
+      
       if (showLoading) setLoading(true);
       
       if (activeTab === 'agendamentos') {
