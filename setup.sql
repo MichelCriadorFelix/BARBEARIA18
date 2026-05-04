@@ -219,13 +219,10 @@ alter table appointments enable row level security;
 drop policy if exists "Read appointments" on appointments;
 create policy "Read appointments" on appointments for select to authenticated using (
   client_id = auth.uid() OR 
-  (
-    get_my_role() in ('master', 'barber') AND
-    exists (
-      select 1 from services s 
-      where s.id = appointments.service_id 
-      and s.barbershop_id = get_my_barbershop_id()
-    )
+  exists (
+    select 1 from services s 
+    where s.id = appointments.service_id 
+    and s.barbershop_id = get_my_barbershop_id()
   )
 );
 
