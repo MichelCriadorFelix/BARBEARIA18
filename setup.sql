@@ -64,6 +64,11 @@ begin
   if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='profiles' and column_name='pix_key') then 
     alter table profiles add column pix_key text; 
   end if; 
+
+  -- Adiciona whatsapp para os profissionais
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='profiles' and column_name='whatsapp_number') then 
+    alter table profiles add column whatsapp_number text; 
+  end if; 
 end 
 $$;
 

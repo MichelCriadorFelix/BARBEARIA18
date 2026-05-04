@@ -28,8 +28,6 @@ import {
   defaultBusinessHours,
 } from "@/lib/workingHours";
 
-const WHATSAPP_NUMBER = "21965249265";
-
 export function ClientBooking() {
   const { profile } = useAuth();
   const [services, setServices] = useState<any[]>([]);
@@ -39,6 +37,7 @@ export function ClientBooking() {
   );
   
   const [pixKey, setPixKey] = useState<string>("");
+  const [whatsapp, setWhatsapp] = useState<string>("21965249265");
 
   // Working Hours State
   const [businessHours, setBusinessHours] =
@@ -58,23 +57,25 @@ export function ClientBooking() {
   useEffect(() => {
     if (profile?.barbershop_id) {
       loadBusinessData();
-      fetchPixKey();
+      fetchBarberData();
     }
   }, [profile?.barbershop_id]);
 
-  async function fetchPixKey() {
+  async function fetchBarberData() {
     if (!profile?.barbershop_id) return;
     const { data } = await supabase
       .from('profiles')
-      .select('pix_key')
+      .select('pix_key, whatsapp_number')
       .eq('barbershop_id', profile.barbershop_id)
       .in('role', ['master', 'barber'])
-      .not('pix_key', 'is', null)
       .limit(1)
       .single();
     
     if (data?.pix_key) {
       setPixKey(data.pix_key);
+    }
+    if (data?.whatsapp_number) {
+      setWhatsapp(data.whatsapp_number);
     }
   }
 
@@ -449,7 +450,7 @@ export function ClientBooking() {
             </p>
 
             <a
-              href={`https://wa.me/55${WHATSAPP_NUMBER}?text=Olá,%20acabei%20de%20fazer%20um%20agendamento%20e%20aqui%20está%20meu%20comprovante.`}
+              href={`https://wa.me/55${whatsapp}?text=Olá,%20acabei%20de%20fazer%20um%20agendamento%20e%20aqui%20está%20meu%20comprovante.`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white text-sm font-bold px-4 py-2 rounded-full transition-colors"
@@ -519,7 +520,7 @@ export function ClientBooking() {
               </button>
 
               <a
-                href={`https://wa.me/55${WHATSAPP_NUMBER}?text=Olá,%20segue%20o%20comprovante%20do%20meu%20corte%20${confirmedAppointment.services?.name || "agendado"}%20agendado%20para%20${confirmedAppointment.start_time ? format(new Date(confirmedAppointment.start_time), "dd/MM 'às' HH:mm") : ""}.`}
+                href={`https://wa.me/55${whatsapp}?text=Olá,%20segue%20o%20comprovante%20do%20meu%20corte%20${confirmedAppointment.services?.name || "agendado"}%20agendado%20para%20${confirmedAppointment.start_time ? format(new Date(confirmedAppointment.start_time), "dd/MM 'às' HH:mm") : ""}.`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors uppercase text-xs font-black shadow-lg shadow-green-500/10"

@@ -11,25 +11,28 @@ export function ClientHistory() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [pixKey, setPixKey] = useState<string>("");
+  const [whatsapp, setWhatsapp] = useState<string>("21965249265");
 
   useEffect(() => {
     if (profile?.id) fetchHistory();
-    if (profile?.barbershop_id) fetchPixKey();
+    if (profile?.barbershop_id) fetchBarberData();
   }, [profile]);
 
-  async function fetchPixKey() {
+  async function fetchBarberData() {
     if (!profile?.barbershop_id) return;
     const { data } = await supabase
       .from('profiles')
-      .select('pix_key')
+      .select('pix_key, whatsapp_number')
       .eq('barbershop_id', profile.barbershop_id)
       .in('role', ['master', 'barber'])
-      .not('pix_key', 'is', null)
       .limit(1)
       .single();
     
     if (data?.pix_key) {
       setPixKey(data.pix_key);
+    }
+    if (data?.whatsapp_number) {
+      setWhatsapp(data.whatsapp_number);
     }
   }
 
@@ -120,7 +123,7 @@ export function ClientHistory() {
                         ⚠️ Importante: Após o pagamento, envie o comprovante para confirmar sua reserva.
                       </p>
                       <a 
-                        href={`https://wa.me/5521965249265?text=Olá, segue o comprovante do meu corte agendado para ${apt.start_time ? format(new Date(apt.start_time), "dd/MM 'às' HH:mm", { locale: ptBR }) : ""}.`}
+                        href={`https://wa.me/55${whatsapp}?text=Olá, segue o comprovante do meu corte agendado para ${apt.start_time ? format(new Date(apt.start_time), "dd/MM 'às' HH:mm", { locale: ptBR }) : ""}.`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-full transition-all active:scale-95"

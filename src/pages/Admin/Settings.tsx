@@ -14,6 +14,7 @@ export function AdminSettings() {
   const [shopName, setShopName] = useState("");
   const [shopLogo, setShopLogo] = useState("");
   const [pixKey, setPixKey] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const inviteShopId = profile?.barbershop_id || profile?.id;
@@ -32,10 +33,11 @@ export function AdminSettings() {
       if (profile?.id) {
         const { data: pData } = await supabase
           .from("profiles")
-          .select("pix_key")
+          .select("pix_key, whatsapp_number")
           .eq("id", profile.id)
           .single();
         if (pData?.pix_key) setPixKey(pData.pix_key);
+        if (pData?.whatsapp_number) setWhatsappNumber(pData.whatsapp_number);
       }
 
       const shopId = profile?.barbershop_id || profile?.id;
@@ -110,6 +112,7 @@ export function AdminSettings() {
         profileUpdates.barbershop_id = shopId;
       }
       profileUpdates.pix_key = pixKey;
+      profileUpdates.whatsapp_number = whatsappNumber;
 
       await supabase.from("profiles").update(profileUpdates).eq("id", profile?.id);
 
@@ -214,6 +217,18 @@ export function AdminSettings() {
                 value={pixKey}
                 onChange={(e) => setPixKey(e.target.value)}
                 placeholder="CPF, CNPJ, E-mail, Celular ou Chave Aleatória"
+                className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-amber-500 outline-none transition-colors font-bold"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="whatsappNumber" className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2 block">Seu WhatsApp (Apenas Números)</label>
+              <input 
+                id="whatsappNumber"
+                type="text"
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+                placeholder="Ex: 11999999999"
                 className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-amber-500 outline-none transition-colors font-bold"
               />
             </div>
