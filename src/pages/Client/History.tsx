@@ -85,7 +85,7 @@ export function ClientHistory() {
                     
                     <div className="w-full bg-black/40 rounded-xl p-3 flex flex-col items-center border border-white/5">
                       <span className="text-xs text-white/40 uppercase mb-1">Chave PIX</span>
-                      <span className="text-lg font-mono tracking-widest font-bold text-amber-500 text-center break-all px-2">{pixKey || "Chave PIX indisponível. Pague no local."}</span>
+                      <span className="text-lg font-mono tracking-widest font-bold text-amber-500 text-center break-all px-2">{pixKey ? (pixKey.length > 4 ? `***...${pixKey.slice(-4)}` : "***") : "Chave PIX indisponível. Pague no local."}</span>
                     </div>
 
                     <div className="flex flex-col gap-2">

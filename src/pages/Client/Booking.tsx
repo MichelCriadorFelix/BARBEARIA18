@@ -431,7 +431,7 @@ export function ClientBooking() {
               Chave PIX
             </span>
             <span className="text-lg font-mono tracking-widest font-bold text-amber-500">
-              {pixKey || "Chave PIX indisponível. Pague no local."}
+              {pixKey ? (pixKey.length > 4 ? `***...${pixKey.slice(-4)}` : "***") : "Chave PIX indisponível. Pague no local."}
             </span>
           </div>
 
@@ -506,7 +506,7 @@ export function ClientBooking() {
                   Chave PIX
                 </span>
                 <span className="text-lg font-mono tracking-widest font-bold text-amber-500 text-center break-all px-2">
-                  {pixKey || "Chave PIX indisponível. Pague no local."}
+                  {pixKey ? (pixKey.length > 4 ? `***...${pixKey.slice(-4)}` : "***") : "Chave PIX indisponível. Pague no local."}
                 </span>
               </div>
             </div>
