@@ -164,7 +164,7 @@ create trigger on_auth_user_created
 
 -- Helper functions to avoid infinite recursion in RLS
 create or replace function get_my_barbershop_id()
-returns text
+returns uuid
 language sql
 security definer
 set search_path = public
