@@ -161,19 +161,33 @@ create trigger on_auth_user_created
   for each row execute procedure public.handle_new_user();
 
 -- Atualizar políticas de Profiles
+
+-- Helper functions to avoid infinite recursion in RLS
+create or replace function get_my_barbershop_id()
+returns text
+language sql
+security definer
+set search_path = public
+as $$
+  select barbershop_id from profiles where id = auth.uid();
+$$;
+
+create or replace function get_my_role()
+returns text
+language sql
+security definer
+set search_path = public
+as $$
+  select role from profiles where id = auth.uid();
+$$;
+
 alter table profiles enable row level security;
 drop policy if exists "Read profiles" on profiles;
 create policy "Read profiles" on profiles for select to authenticated using (
   auth.uid() = id OR 
-  (
-    (select barbershop_id from profiles where id = auth.uid()) = barbershop_id
-    AND
-    (
-      (select role from profiles where id = auth.uid()) in ('master', 'barber')
-      OR
-      role in ('master', 'barber')
-    )
-  )
+  barbershop_id = get_my_barbershop_id() OR
+  get_my_role() in ('master', 'barber') OR
+  role in ('master', 'barber')
 );
 
 drop policy if exists "Insert profiles" on profiles;
@@ -183,9 +197,9 @@ drop policy if exists "Update profiles" on profiles;
 create policy "Update profiles" on profiles for update to authenticated using (
   auth.uid() = id OR 
   (
-    (select role from profiles where id = auth.uid()) in ('master', 'barber')
+    get_my_role() in ('master', 'barber')
     AND
-    (select barbershop_id from profiles where id = auth.uid()) = barbershop_id
+    get_my_barbershop_id() = barbershop_id
   )
 );
 
@@ -196,12 +210,8 @@ create policy "Read access on services for authenticated" on services for select
 
 drop policy if exists "Admin can insert services" on services;
 create policy "Admin can insert services" on services for all to authenticated using (
-  exists (
-    select 1 from profiles 
-    where id = auth.uid() 
-    and role in ('master', 'barber') 
-    and barbershop_id = services.barbershop_id
-  )
+  get_my_role() in ('master', 'barber') 
+  and get_my_barbershop_id() = services.barbershop_id
 );
 
 -- Atualizar políticas de Appointments
@@ -209,34 +219,39 @@ alter table appointments enable row level security;
 drop policy if exists "Read appointments" on appointments;
 create policy "Read appointments" on appointments for select to authenticated using (
   client_id = auth.uid() OR 
-  exists (
-    select 1 from profiles p 
-    join services s on s.barbershop_id = p.barbershop_id
-    where p.id = auth.uid() 
-    and s.id = appointments.service_id
-    and p.role in ('master', 'barber')
+  (
+    get_my_role() in ('master', 'barber') AND
+    exists (
+      select 1 from services s 
+      where s.id = appointments.service_id 
+      and s.barbershop_id = get_my_barbershop_id()
+    )
   )
 );
 
 drop policy if exists "Insert appointments" on appointments;
 create policy "Insert appointments" on appointments for insert to authenticated with check (
-  client_id = auth.uid() OR exists (
-    select 1 from profiles p 
-    join services s on s.barbershop_id = p.barbershop_id
-    where p.id = auth.uid() 
-    and s.id = appointments.service_id
-    and p.role in ('master', 'barber')
+  client_id = auth.uid() OR 
+  (
+    get_my_role() in ('master', 'barber') AND
+    exists (
+      select 1 from services s 
+      where s.id = appointments.service_id 
+      and s.barbershop_id = get_my_barbershop_id()
+    )
   )
 );
 
 drop policy if exists "Update appointments" on appointments;
 create policy "Update appointments" on appointments for update to authenticated using (
-  client_id = auth.uid() OR exists (
-    select 1 from profiles p 
-    join services s on s.barbershop_id = p.barbershop_id
-    where p.id = auth.uid() 
-    and s.id = appointments.service_id
-    and p.role in ('master', 'barber')
+  client_id = auth.uid() OR 
+  (
+    get_my_role() in ('master', 'barber') AND
+    exists (
+      select 1 from services s 
+      where s.id = appointments.service_id 
+      and s.barbershop_id = get_my_barbershop_id()
+    )
   )
 );
 
@@ -244,17 +259,9 @@ create policy "Update appointments" on appointments for update to authenticated 
 alter table transactions enable row level security;
 drop policy if exists "Admin transactions" on transactions;
 create policy "Admin transactions" on transactions for all to authenticated using (
-  exists (
-    select 1 from profiles 
-    where id = auth.uid() 
-    and role in ('master', 'barber') 
-    and barbershop_id = transactions.barbershop_id
-  )
+  get_my_role() in ('master', 'barber') 
+  and get_my_barbershop_id() = transactions.barbershop_id
 ) with check (
-  exists (
-    select 1 from profiles 
-    where id = auth.uid() 
-    and role in ('master', 'barber') 
-    and barbershop_id = transactions.barbershop_id
-  )
+  get_my_role() in ('master', 'barber') 
+  and get_my_barbershop_id() = transactions.barbershop_id
 );
