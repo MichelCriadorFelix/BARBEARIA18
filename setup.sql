@@ -58,6 +58,11 @@ begin
   -- Adiciona a coluna barbershop_id se não existir
   if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='profiles' and column_name='barbershop_id') then 
     alter table profiles add column barbershop_id uuid references barbershops(id); 
+  end if;
+  
+  -- Adiciona chave pix para os profissionais
+  if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='profiles' and column_name='pix_key') then 
+    alter table profiles add column pix_key text; 
   end if; 
 end 
 $$;

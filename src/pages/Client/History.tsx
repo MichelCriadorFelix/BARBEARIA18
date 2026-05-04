@@ -10,10 +10,28 @@ export function ClientHistory() {
   const { profile } = useAuth();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pixKey, setPixKey] = useState<string>("");
 
   useEffect(() => {
     if (profile?.id) fetchHistory();
+    if (profile?.barbershop_id) fetchPixKey();
   }, [profile]);
+
+  async function fetchPixKey() {
+    if (!profile?.barbershop_id) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('pix_key')
+      .eq('barbershop_id', profile.barbershop_id)
+      .in('role', ['master', 'barber'])
+      .not('pix_key', 'is', null)
+      .limit(1)
+      .single();
+    
+    if (data?.pix_key) {
+      setPixKey(data.pix_key);
+    }
+  }
 
   async function fetchHistory() {
     setLoading(true);
@@ -60,23 +78,27 @@ export function ClientHistory() {
                      <p>Agendamento Aprovado! Chegue com 10 minutos de antecedência para iniciar o corte.</p>
                   </div>
                                 <div className="bg-black/40 rounded-xl p-4 border border-amber-500/20 space-y-4">
-                    <p className="text-white/80 font-medium tracking-tight">Pagamento via PIX (CPF):</p>
+                    <p className="text-white/80 font-medium tracking-tight">Pagamento via PIX:</p>
                     
                     <div className="w-full bg-black/40 rounded-xl p-3 flex flex-col items-center border border-white/5">
-                      <span className="text-xs text-white/40 uppercase mb-1">Chave CPF</span>
-                      <span className="text-lg font-mono tracking-widest font-bold text-amber-500">***.***.***-76</span>
+                      <span className="text-xs text-white/40 uppercase mb-1">Chave PIX</span>
+                      <span className="text-lg font-mono tracking-widest font-bold text-amber-500 text-center break-all px-2">{pixKey || "Chave PIX indisponível. Pague no local."}</span>
                     </div>
 
                     <div className="flex flex-col gap-2">
                        <button
                          onClick={async () => {
                            try {
+                             if (!pixKey) {
+                               alert("O barbeiro ainda não cadastrou uma chave PIX.");
+                               return;
+                             }
                              if (navigator.clipboard && window.isSecureContext) {
-                               await navigator.clipboard.writeText("122.836.777-76");
+                               await navigator.clipboard.writeText(pixKey);
                                alert("Chave PIX copiada!");
                              } else {
                                const textArea = document.createElement("textarea");
-                               textArea.value = "122.836.777-76";
+                               textArea.value = pixKey;
                                document.body.appendChild(textArea);
                                textArea.select();
                                document.execCommand('copy');
@@ -84,7 +106,7 @@ export function ClientHistory() {
                                alert("Chave PIX copiada!");
                              }
                            } catch (err) {
-                             alert("Erro ao copiar. Use o CPF: 122.836.777-76");
+                             alert("Erro ao copiar.");
                            }
                          }}
                          className="flex items-center justify-center gap-2 px-4 py-3 bg-amber-500 text-amber-950 rounded-xl hover:bg-amber-600 transition-colors uppercase text-xs font-black shadow-lg shadow-amber-500/10"

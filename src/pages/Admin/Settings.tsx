@@ -13,6 +13,7 @@ export function AdminSettings() {
   const [copied, setCopied] = useState(false);
   const [shopName, setShopName] = useState("");
   const [shopLogo, setShopLogo] = useState("");
+  const [pixKey, setPixKey] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const inviteShopId = profile?.barbershop_id || profile?.id;
@@ -27,7 +28,16 @@ export function AdminSettings() {
   };
 
   React.useEffect(() => {
-    async function loadShopData() {
+    async function loadData() {
+      if (profile?.id) {
+        const { data: pData } = await supabase
+          .from("profiles")
+          .select("pix_key")
+          .eq("id", profile.id)
+          .single();
+        if (pData?.pix_key) setPixKey(pData.pix_key);
+      }
+
       const shopId = profile?.barbershop_id || profile?.id;
       if (!shopId) return;
       const { data } = await supabase
@@ -41,7 +51,7 @@ export function AdminSettings() {
         setShopLogo(data.logo_url || "");
       }
     }
-    loadShopData();
+    loadData();
   }, [profile?.barbershop_id, profile?.id]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,9 +105,13 @@ export function AdminSettings() {
       if (error) throw error;
 
       // Se o barber não tem barbershop_id no profile ainda, atualiza o profile dele
+      const profileUpdates: any = {};
       if (!profile?.barbershop_id) {
-        await supabase.from("profiles").update({ barbershop_id: shopId }).eq("id", profile?.id);
+        profileUpdates.barbershop_id = shopId;
       }
+      profileUpdates.pix_key = pixKey;
+
+      await supabase.from("profiles").update(profileUpdates).eq("id", profile?.id);
 
       setMessage({ type: "success", text: "Informações atualizadas com sucesso!" });
       setTimeout(() => window.location.reload(), 1500);
@@ -188,6 +202,18 @@ export function AdminSettings() {
                 value={shopName}
                 onChange={(e) => setShopName(e.target.value)}
                 placeholder="Ex: Barbearia 18"
+                className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-amber-500 outline-none transition-colors font-bold"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="pixKey" className="text-xs font-bold uppercase tracking-widest text-white/40 mb-2 block">Sua Chave PIX</label>
+              <input 
+                id="pixKey"
+                type="text"
+                value={pixKey}
+                onChange={(e) => setPixKey(e.target.value)}
+                placeholder="CPF, CNPJ, E-mail, Celular ou Chave Aleatória"
                 className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:border-amber-500 outline-none transition-colors font-bold"
               />
             </div>

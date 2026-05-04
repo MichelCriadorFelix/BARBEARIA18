@@ -28,7 +28,6 @@ import {
   defaultBusinessHours,
 } from "@/lib/workingHours";
 
-const CHAVE_PIX = "122.836.777-76";
 const WHATSAPP_NUMBER = "21965249265";
 
 export function ClientBooking() {
@@ -38,6 +37,8 @@ export function ClientBooking() {
   const [confirmedAppointment, setConfirmedAppointment] = useState<any | null>(
     null,
   );
+  
+  const [pixKey, setPixKey] = useState<string>("");
 
   // Working Hours State
   const [businessHours, setBusinessHours] =
@@ -57,8 +58,25 @@ export function ClientBooking() {
   useEffect(() => {
     if (profile?.barbershop_id) {
       loadBusinessData();
+      fetchPixKey();
     }
   }, [profile?.barbershop_id]);
+
+  async function fetchPixKey() {
+    if (!profile?.barbershop_id) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('pix_key')
+      .eq('barbershop_id', profile.barbershop_id)
+      .in('role', ['master', 'barber'])
+      .not('pix_key', 'is', null)
+      .limit(1)
+      .single();
+    
+    if (data?.pix_key) {
+      setPixKey(data.pix_key);
+    }
+  }
 
   async function loadBusinessData() {
     if (!profile?.barbershop_id) return;
@@ -340,13 +358,17 @@ export function ClientBooking() {
 
   const handleCopyPix = async () => {
     try {
+      if (!pixKey) {
+        alert("O barbeiro ainda não cadastrou uma chave PIX.");
+        return;
+      }
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(CHAVE_PIX);
+        await navigator.clipboard.writeText(pixKey);
         alert("Chave PIX copiada para a área de transferência!");
       } else {
         // Fallback for non-secure contexts or browsers without clipboard API
         const textArea = document.createElement("textarea");
-        textArea.value = CHAVE_PIX;
+        textArea.value = pixKey;
         document.body.appendChild(textArea);
         textArea.select();
         try {
@@ -405,10 +427,10 @@ export function ClientBooking() {
 
           <div className="w-full bg-black/40 rounded-xl p-4 mb-4 flex flex-col items-center border border-white/5">
             <span className="text-xs text-white/40 uppercase mb-1">
-              Chave CPF
+              Chave PIX
             </span>
             <span className="text-lg font-mono tracking-widest font-bold text-amber-500">
-              ***.***.***-76
+              {pixKey || "Chave PIX indisponível. Pague no local."}
             </span>
           </div>
 
@@ -480,10 +502,10 @@ export function ClientBooking() {
               </span>
               <div className="w-full bg-black/40 rounded-xl p-3 flex flex-col items-center border border-white/5">
                 <span className="text-xs text-white/40 uppercase mb-1">
-                  Chave CPF
+                  Chave PIX
                 </span>
-                <span className="text-lg font-mono tracking-widest font-bold text-amber-500">
-                  ***.***.***-76
+                <span className="text-lg font-mono tracking-widest font-bold text-amber-500 text-center break-all px-2">
+                  {pixKey || "Chave PIX indisponível. Pague no local."}
                 </span>
               </div>
             </div>
