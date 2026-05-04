@@ -165,7 +165,15 @@ alter table profiles enable row level security;
 drop policy if exists "Read profiles" on profiles;
 create policy "Read profiles" on profiles for select to authenticated using (
   auth.uid() = id OR 
-  (select barbershop_id from profiles where id = auth.uid()) = barbershop_id
+  (
+    (select barbershop_id from profiles where id = auth.uid()) = barbershop_id
+    AND
+    (
+      (select role from profiles where id = auth.uid()) in ('master', 'barber')
+      OR
+      role in ('master', 'barber')
+    )
+  )
 );
 
 drop policy if exists "Insert profiles" on profiles;
@@ -174,7 +182,11 @@ create policy "Insert profiles" on profiles for insert to authenticated with che
 drop policy if exists "Update profiles" on profiles;
 create policy "Update profiles" on profiles for update to authenticated using (
   auth.uid() = id OR 
-  (select role from profiles where id = auth.uid()) in ('master', 'barber')
+  (
+    (select role from profiles where id = auth.uid()) in ('master', 'barber')
+    AND
+    (select barbershop_id from profiles where id = auth.uid()) = barbershop_id
+  )
 );
 
 -- Atualizar políticas de Services
@@ -184,7 +196,12 @@ create policy "Read access on services for authenticated" on services for select
 
 drop policy if exists "Admin can insert services" on services;
 create policy "Admin can insert services" on services for all to authenticated using (
-  exists (select 1 from profiles where id = auth.uid() and role in ('master', 'barber'))
+  exists (
+    select 1 from profiles 
+    where id = auth.uid() 
+    and role in ('master', 'barber') 
+    and barbershop_id = services.barbershop_id
+  )
 );
 
 -- Atualizar políticas de Appointments
@@ -203,12 +220,24 @@ create policy "Read appointments" on appointments for select to authenticated us
 
 drop policy if exists "Insert appointments" on appointments;
 create policy "Insert appointments" on appointments for insert to authenticated with check (
-  client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role in ('master', 'barber'))
+  client_id = auth.uid() OR exists (
+    select 1 from profiles p 
+    join services s on s.barbershop_id = p.barbershop_id
+    where p.id = auth.uid() 
+    and s.id = appointments.service_id
+    and p.role in ('master', 'barber')
+  )
 );
 
 drop policy if exists "Update appointments" on appointments;
 create policy "Update appointments" on appointments for update to authenticated using (
-  client_id = auth.uid() or exists (select 1 from profiles where id = auth.uid() and role in ('master', 'barber'))
+  client_id = auth.uid() OR exists (
+    select 1 from profiles p 
+    join services s on s.barbershop_id = p.barbershop_id
+    where p.id = auth.uid() 
+    and s.id = appointments.service_id
+    and p.role in ('master', 'barber')
+  )
 );
 
 -- Atualizar políticas de Transactions

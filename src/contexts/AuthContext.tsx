@@ -46,7 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const params = new URLSearchParams(window.location.search);
     const referralId = params.get("ref");
     if (referralId) {
-      console.log("Convite detectado para barbearia:", referralId);
       localStorage.setItem("barber_referral", referralId);
     }
 
@@ -72,8 +71,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth Event:", event, "Session UID:", session?.user?.id);
-
       if (!isMounted) return;
 
       const newUser = session?.user ?? null;
@@ -128,7 +125,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             const { data: shopExists } = await supabase.from("barbershops").select("id").eq("id", shopId).maybeSingle();
             if (!shopExists) {
-              console.log("Auto-provisioning barbershop for admin:", shopId);
               await supabase.from("barbershops").upsert({
                 id: shopId,
                 name: "Minha Barbearia",
@@ -143,7 +139,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Se o client logou através de um link de convite, atualizaremos a barbearia vinculada
         const referralId = localStorage.getItem("barber_referral");
         if (referralId && fullProfile.role === "client" && fullProfile.barbershop_id !== referralId) {
-          console.log("Vinculando cliente à barbearia do convite:", referralId);
           
           const { error: updateError } = await supabase.from("profiles").update({ 
             barbershop_id: referralId 
@@ -160,7 +155,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         setProfile(fullProfile);
       } else {
-        console.warn("Profile not found in database. Setting fallback profile...");
 
         const email = currentUser.email || "";
         const fallbackName = currentUser.user_metadata?.full_name || email?.split('@')[0] || "Usuário";
