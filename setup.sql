@@ -107,13 +107,12 @@ create table if not exists appointments (
 -- Habilitar o modo Realtime para atualizações em tempo real 
 do $$
 begin
-  begin
-    alter publication supabase_realtime drop table appointments;
-  exception when others then
-    null;
-  end;
-  
-  alter publication supabase_realtime add table appointments;
+  if not exists (
+    select 1 from pg_publication_tables 
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'appointments'
+  ) then
+    alter publication supabase_realtime add table appointments;
+  end if;
 end
 $$;
 
@@ -218,7 +217,7 @@ declare
   v_caller_role text;
 begin
   select role into v_caller_role from profiles where id = auth.uid();
-  if v_caller_role in ('master', 'barber') then
+  if v_caller_role = 'master' then
     update profiles 
     set role = p_role, barbershop_id = p_barbershop_id 
     where id = p_user_id;
