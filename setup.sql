@@ -204,6 +204,30 @@ as $$
   and a.start_time <= p_end;
 $$;
 
+create or replace function admin_toggle_barber(
+  p_user_id uuid,
+  p_role text,
+  p_barbershop_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_caller_role text;
+begin
+  select role into v_caller_role from profiles where id = auth.uid();
+  if v_caller_role in ('master', 'barber') then
+    update profiles 
+    set role = p_role, barbershop_id = p_barbershop_id 
+    where id = p_user_id;
+  else
+    raise exception 'Permission denied';
+  end if;
+end;
+$$;
+
 alter table profiles enable row level security;
 drop policy if exists "Read profiles" on profiles;
 create policy "Read profiles" on profiles for select to authenticated using (

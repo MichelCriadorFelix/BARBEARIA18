@@ -50,15 +50,15 @@ export function AdminUsers() {
       const isCurrentlyBarber = currentRole === "barber";
       const newRole = isCurrentlyBarber ? "client" : "barber";
       
-      const updateData: any = { role: newRole };
-      if (newRole === "barber" && profile?.barbershop_id) {
-        updateData.barbershop_id = profile.barbershop_id;
-      }
+      const targetBarbershop = newRole === "barber" && profile?.barbershop_id 
+        ? profile.barbershop_id 
+        : null;
 
-      const { error } = await supabase
-        .from("profiles")
-        .update(updateData)
-        .eq("id", id);
+      const { error } = await supabase.rpc('admin_toggle_barber', {
+        p_user_id: id,
+        p_role: newRole,
+        p_barbershop_id: targetBarbershop
+      });
 
       if (error) throw error;
 
@@ -74,7 +74,7 @@ export function AdminUsers() {
       setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
       console.error("Error toggling barber:", err);
-      setMessage({ type: "error", text: "Erro ao atualizar. Verifique a nova constraint." });
+      setMessage({ type: "error", text: "Erro ao atualizar. Verifique sua conexão ou permissões." });
     }
   }
 
