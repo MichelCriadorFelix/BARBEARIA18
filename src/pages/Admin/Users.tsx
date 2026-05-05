@@ -53,22 +53,14 @@ export function AdminUsers() {
       const updateData: any = { role: newRole };
       if (newRole === "barber" && profile?.barbershop_id) {
         updateData.barbershop_id = profile.barbershop_id;
-      } else if (newRole === "client") {
-        updateData.barbershop_id = null;
       }
 
-      console.log("Updating role with data:", updateData, "for user:", id);
-
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("profiles")
         .update(updateData)
-        .eq("id", id)
-        .select();
+        .eq("id", id);
 
-      if (error) {
-        console.error("Supabase update error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       setMessage({ 
         type: "success", 
@@ -82,7 +74,7 @@ export function AdminUsers() {
       setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
       console.error("Error toggling barber:", err);
-      setMessage({ type: "error", text: `Erro ao atualizar: ${err.message || JSON.stringify(err)}` });
+      setMessage({ type: "error", text: "Erro ao atualizar. Verifique a nova constraint." });
     }
   }
 

@@ -15,7 +15,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
-  isMaster: boolean;
+  isSuperAdmin: boolean;
   isBarber: boolean;
   signOut: () => Promise<void>;
 }
@@ -24,7 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   isLoading: true,
-  isMaster: false,
+  isSuperAdmin: false,
   isBarber: false,
   signOut: async () => {},
 });
@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isMaster = profile?.role === "master";
+  const isSuperAdmin = profile?.role === "master";
   const isBarber = profile?.role === "barber";
 
   useEffect(() => {
@@ -214,7 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, isLoading, isMaster, isBarber, signOut }}>
+    <AuthContext.Provider value={{ user, profile, isLoading, isSuperAdmin, isBarber, signOut }}>
       {children}
     </AuthContext.Provider>
   );

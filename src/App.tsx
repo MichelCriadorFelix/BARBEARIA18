@@ -95,9 +95,9 @@ function ProtectedRoute({
 }: {
   children: React.ReactNode;
   adminOnly?: boolean;
-  masterOnly?: boolean;
+  superAdminOnly?: boolean;
 }) {
-  const { user, profile, isLoading, isBarber, isMaster } = useAuth();
+  const { user, profile, isLoading, isBarber, isSuperAdmin } = useAuth();
 
   if (isLoading) {
     return <div className="min-h-screen bg-[#050505] flex items-center justify-center text-amber-500">Carregando...</div>;
@@ -141,11 +141,11 @@ function ProtectedRoute({
     );
   }
 
-  if (adminOnly && !(isBarber || isMaster)) {
+  if (adminOnly && !(isBarber || isSuperAdmin)) {
     return <Navigate to="/" replace />;
   }
 
-  if (masterOnly && !isMaster) {
+  if (superAdminOnly && !isSuperAdmin) {
     return <Navigate to="/" replace />;
   }
 
@@ -172,17 +172,17 @@ function RoutesRenderer() {
         <Route path="/admin/clients" element={<ProtectedRoute adminOnly><AdminClients /></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminSettings /></ProtectedRoute>} />
 
-        {/* Master only */}
-        <Route path="/admin/users" element={<ProtectedRoute masterOnly><AdminUsers /></ProtectedRoute>} />
+        {/* SuperAdmin only (Master) */}
+        <Route path="/admin/users" element={<ProtectedRoute superAdminOnly><AdminUsers /></ProtectedRoute>} />
       </Route>
     </Routes>
   );
 }
 
 function HomeRouter() {
-  const { isBarber, isMaster } = useAuth();
+  const { isBarber, isSuperAdmin } = useAuth();
 
-  if (isBarber || isMaster) {
+  if (isBarber || isSuperAdmin) {
     return <AdminAgenda />;
   }
 

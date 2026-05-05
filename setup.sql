@@ -107,12 +107,13 @@ create table if not exists appointments (
 -- Habilitar o modo Realtime para atualizações em tempo real 
 do $$
 begin
-  if not exists (
-    select 1 from pg_publication_tables 
-    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'appointments'
-  ) then
-    alter publication supabase_realtime add table appointments;
-  end if;
+  begin
+    alter publication supabase_realtime drop table appointments;
+  exception when others then
+    null;
+  end;
+  
+  alter publication supabase_realtime add table appointments;
 end
 $$;
 
@@ -203,30 +204,6 @@ as $$
   and a.start_time <= p_end;
 $$;
 
-create or replace function admin_toggle_barber(
-  p_user_id uuid,
-  p_role text,
-  p_barbershop_id uuid
-)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_caller_role text;
-begin
-  select role into v_caller_role from profiles where id = auth.uid();
-  if v_caller_role = 'master' then
-    update profiles 
-    set role = p_role, barbershop_id = p_barbershop_id 
-    where id = p_user_id;
-  else
-    raise exception 'Permission denied';
-  end if;
-end;
-$$;
-
 alter table profiles enable row level security;
 drop policy if exists "Read profiles" on profiles;
 create policy "Read profiles" on profiles for select to authenticated using (
@@ -242,9 +219,8 @@ create policy "Insert profiles" on profiles for insert to authenticated with che
 drop policy if exists "Update profiles" on profiles;
 create policy "Update profiles" on profiles for update to authenticated using (
   auth.uid() = id OR 
-  get_my_role() = 'master' OR
   (
-    get_my_role() = 'barber'
+    get_my_role() in ('master', 'barber')
     AND
     (get_my_barbershop_id() = barbershop_id OR barbershop_id IS NULL)
   )
