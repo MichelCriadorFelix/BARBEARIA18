@@ -50,17 +50,25 @@ export function AdminUsers() {
       const isCurrentlyBarber = currentRole === "barber";
       const newRole = isCurrentlyBarber ? "client" : "barber";
       
-      const targetBarbershop = newRole === "barber" && profile?.barbershop_id 
-        ? profile.barbershop_id 
-        : null;
+      const updateData: any = { role: newRole };
+      if (newRole === "barber" && profile?.barbershop_id) {
+        updateData.barbershop_id = profile.barbershop_id;
+      } else if (newRole === "client") {
+        updateData.barbershop_id = null;
+      }
 
-      const { error } = await supabase.rpc('admin_toggle_barber', {
-        p_user_id: id,
-        p_role: newRole,
-        p_barbershop_id: targetBarbershop
-      });
+      console.log("Updating role with data:", updateData, "for user:", id);
 
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from("profiles")
+        .update(updateData)
+        .eq("id", id)
+        .select();
+
+      if (error) {
+        console.error("Supabase update error:", error);
+        throw error;
+      }
 
       setMessage({ 
         type: "success", 
@@ -74,7 +82,7 @@ export function AdminUsers() {
       setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
       console.error("Error toggling barber:", err);
-      setMessage({ type: "error", text: "Erro ao atualizar. Verifique sua conexão ou permissões." });
+      setMessage({ type: "error", text: `Erro ao atualizar: ${err.message || JSON.stringify(err)}` });
     }
   }
 

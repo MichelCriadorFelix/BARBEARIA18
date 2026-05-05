@@ -10,9 +10,9 @@ import { Logo } from "./Logo";
 import { InstallAppButton } from "./InstallAppButton";
 
 export function AppLayout() {
-  const { profile, isBarber, isSuperAdmin, signOut } = useAuth();
+  const { profile, isBarber, isMaster, signOut } = useAuth();
   const location = useLocation();
-  const isAdmin = isBarber || isSuperAdmin;
+  const isProfessional = isBarber || isMaster;
   const [now, setNow] = useState(new Date());
   const [barbershopName, setBarbershopName] = useState<string>("Barbearia 18");
   const [barbershopLogo, setBarbershopLogo] = useState<string | null>(null);
@@ -68,23 +68,23 @@ export function AppLayout() {
     }
 
     fetchBarbershopInfo();
-  }, [profile?.barbershop_id, profile?.id, isAdmin]);
+  }, [profile?.barbershop_id, profile?.id, isProfessional]);
 
   const clientLinks = [
     { name: "Agendar", href: "/", icon: Calendar },
     { name: "Meus Cortes", href: "/history", icon: Scissors },
   ];
 
-  const adminLinks = [
+  const professionalLinks = [
     { name: "Agenda", href: "/", icon: Calendar },
     { name: "Clientes", href: "/admin/clients", icon: Users },
     { name: "Finanças / CRM", href: "/admin/finance", icon: DollarSign },
     { name: "Serviços", href: "/admin/services", icon: ListTodo },
-    ...(isSuperAdmin ? [{ name: "Equipe / Admins", href: "/admin/users", icon: Users }] : []),
+    ...(isMaster ? [{ name: "Equipe / Master", href: "/master/users", icon: Users }] : []),
     { name: "Configurações", href: "/admin/settings", icon: Settings },
   ];
 
-  const links = isAdmin ? adminLinks : clientLinks;
+  const links = isProfessional ? professionalLinks : clientLinks;
 
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col md:flex-row">
@@ -100,7 +100,7 @@ export function AppLayout() {
                   </span>
                 ))}
               </h2>
-              <p className="text-[10px] text-amber-500 font-black uppercase tracking-widest mt-1">{isAdmin ? "Administração" : "Painel do Cliente"}</p>
+              <p className="text-[10px] text-amber-500 font-black uppercase tracking-widest mt-1">{isProfessional ? "Painel do Profissional" : "Painel do Cliente"}</p>
             </div>
           </div>
 
