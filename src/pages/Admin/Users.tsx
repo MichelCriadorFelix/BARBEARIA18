@@ -51,8 +51,9 @@ export function AdminUsers() {
       const newRole = isCurrentlyBarber ? "client" : "barber";
       
       const updateData: any = { role: newRole };
-      if (newRole === "barber" && profile?.barbershop_id) {
-        updateData.barbershop_id = profile.barbershop_id;
+      // Se estiver removendo o papel de barber, também removemos o vínculo com a barbearia
+      if (newRole === "client") {
+        updateData.barbershop_id = null;
       }
 
       const { error } = await supabase

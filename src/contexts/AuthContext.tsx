@@ -137,8 +137,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Se o client logou através de um link de convite, atualizaremos a barbearia vinculada
+        // Apenas se ele ainda não tiver uma barbearia vinculada (para não misturar clientes)
         const referralId = localStorage.getItem("barber_referral");
-        if (referralId && fullProfile.role === "client" && fullProfile.barbershop_id !== referralId) {
+        if (referralId && fullProfile.role === "client" && !fullProfile.barbershop_id) {
           
           const { error: updateError } = await supabase.from("profiles").update({ 
             barbershop_id: referralId 
@@ -146,11 +147,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           if (!updateError) {
             fullProfile.barbershop_id = referralId;
-            // Removemos o referral após atualizar com sucesso
-            localStorage.removeItem("barber_referral");
           } else {
             console.error("Falha ao vincular cliente à barbearia:", updateError);
           }
+        }
+        
+        // Sempre removemos o referral após o processamento do perfil, independente de ter atualizado ou não
+        if (referralId) {
+          localStorage.removeItem("barber_referral");
         }
         
         setProfile(fullProfile);
