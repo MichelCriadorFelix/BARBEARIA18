@@ -219,8 +219,9 @@ create policy "Insert profiles" on profiles for insert to authenticated with che
 drop policy if exists "Update profiles" on profiles;
 create policy "Update profiles" on profiles for update to authenticated using (
   auth.uid() = id OR 
+  get_my_role() = 'master' OR
   (
-    get_my_role() in ('master', 'barber')
+    get_my_role() = 'barber'
     AND
     (get_my_barbershop_id() = barbershop_id OR barbershop_id IS NULL)
   )
