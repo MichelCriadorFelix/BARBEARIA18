@@ -181,6 +181,28 @@ as $$
   select role from profiles where id = auth.uid();
 $$;
 
+create or replace function get_booked_slots(
+  p_barbershop_id uuid,
+  p_start timestamp with time zone,
+  p_end timestamp with time zone
+)
+returns table (
+  start_time timestamp with time zone,
+  end_time timestamp with time zone
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select a.start_time, a.end_time 
+  from appointments a
+  join services s on s.id = a.service_id
+  where s.barbershop_id = p_barbershop_id
+  and a.status in ('pending', 'confirmed', 'completed')
+  and a.start_time >= p_start
+  and a.start_time <= p_end;
+$$;
+
 alter table profiles enable row level security;
 drop policy if exists "Read profiles" on profiles;
 create policy "Read profiles" on profiles for select to authenticated using (
@@ -199,7 +221,7 @@ create policy "Update profiles" on profiles for update to authenticated using (
   (
     get_my_role() in ('master', 'barber')
     AND
-    get_my_barbershop_id() = barbershop_id
+    (get_my_barbershop_id() = barbershop_id OR barbershop_id IS NULL)
   )
 );
 

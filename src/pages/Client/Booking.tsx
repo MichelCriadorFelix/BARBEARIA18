@@ -130,7 +130,7 @@ export function ClientBooking() {
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [selectedDate, selectedService, loadingSlots]);
+  }, [selectedDate, selectedService]);
 
   useEffect(() => {
     if (selectedDate && selectedService) {
@@ -241,13 +241,11 @@ export function ClientBooking() {
       const startRange = startOfDay(date).toISOString();
       const endRange = endOfDay(date).toISOString();
 
-      const { data: booked, error } = await supabase
-        .from("appointments")
-        .select("start_time, end_time, services!inner(barbershop_id)")
-        .eq("services.barbershop_id", profile?.barbershop_id)
-        .in("status", ["pending", "confirmed", "completed"])
-        .gte("start_time", startRange)
-        .lte("start_time", endRange);
+      const { data: booked, error } = await supabase.rpc("get_booked_slots", {
+        p_barbershop_id: profile?.barbershop_id,
+        p_start: startRange,
+        p_end: endRange,
+      });
 
       if (error) throw error;
 
@@ -309,13 +307,11 @@ export function ClientBooking() {
       const startRange = startOfDay(selectedDate!).toISOString();
       const endRange = endOfDay(selectedDate!).toISOString();
 
-      const { data: currentBooked, error: fetchError } = await supabase
-        .from("appointments")
-        .select("start_time, end_time, services!inner(barbershop_id)")
-        .eq("services.barbershop_id", profile?.barbershop_id)
-        .in("status", ["pending", "confirmed", "completed"])
-        .gte("start_time", startRange)
-        .lte("start_time", endRange);
+      const { data: currentBooked, error: fetchError } = await supabase.rpc("get_booked_slots", {
+        p_barbershop_id: profile?.barbershop_id,
+        p_start: startRange,
+        p_end: endRange,
+      });
 
       if (fetchError) throw fetchError;
 

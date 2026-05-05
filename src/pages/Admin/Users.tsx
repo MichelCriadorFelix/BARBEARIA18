@@ -50,9 +50,14 @@ export function AdminUsers() {
       const isCurrentlyBarber = currentRole === "barber";
       const newRole = isCurrentlyBarber ? "client" : "barber";
       
+      const updateData: any = { role: newRole };
+      if (newRole === "barber" && profile?.barbershop_id) {
+        updateData.barbershop_id = profile.barbershop_id;
+      }
+
       const { error } = await supabase
         .from("profiles")
-        .update({ role: newRole })
+        .update(updateData)
         .eq("id", id);
 
       if (error) throw error;
