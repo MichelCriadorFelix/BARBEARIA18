@@ -107,12 +107,13 @@ create table if not exists appointments (
 -- Habilitar o modo Realtime para atualizações em tempo real 
 do $$
 begin
-  if not exists (
-    select 1 from pg_publication_tables 
-    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'appointments'
-  ) then
-    alter publication supabase_realtime add table appointments;
-  end if;
+  begin
+    alter publication supabase_realtime drop table appointments;
+  exception when others then
+    null;
+  end;
+  
+  alter publication supabase_realtime add table appointments;
 end
 $$;
 
