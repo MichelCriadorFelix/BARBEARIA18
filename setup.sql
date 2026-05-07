@@ -57,7 +57,15 @@ begin
 
   -- Adiciona a coluna barbershop_id se não existir
   if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='profiles' and column_name='barbershop_id') then 
-    alter table profiles add column barbershop_id uuid references barbershops(id); 
+    alter table profiles add column barbershop_id uuid references barbershops(id) on delete set null; 
+  else
+    -- Se já existe, garante que a constraint de deleção está correta (para não prender a barbearia)
+    alter table profiles drop constraint if exists profiles_barbershop_id_fkey;
+    begin
+      alter table profiles add constraint profiles_barbershop_id_fkey foreign key (barbershop_id) references barbershops(id) on delete set null;
+    exception when others then
+      null;
+    end;
   end if;
   
   -- Adiciona chave pix para os profissionais
@@ -78,7 +86,7 @@ begin
   if not exists (select from pg_tables where schemaname = 'public' and tablename  = 'services') then
     create table services (
       id uuid default uuid_generate_v4() primary key,
-      barbershop_id uuid references barbershops(id) not null,
+      barbershop_id uuid references barbershops(id) on delete cascade not null,
       name text not null,
       price numeric not null,
       duration integer not null default 30, -- Em minutos, base do agendamento
@@ -87,7 +95,15 @@ begin
     );
   else
     if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='services' and column_name='barbershop_id') then 
-      alter table services add column barbershop_id uuid references barbershops(id); 
+      alter table services add column barbershop_id uuid references barbershops(id) on delete cascade; 
+    else
+      -- Ajustar constraint existente
+      alter table services drop constraint if exists services_barbershop_id_fkey;
+      begin
+        alter table services add constraint services_barbershop_id_fkey foreign key (barbershop_id) references barbershops(id) on delete cascade;
+      exception when others then
+        null;
+      end;
     end if;
   end if;
 end 
@@ -96,13 +112,26 @@ $$;
 -- 4. Tabela de Agendamentos
 create table if not exists appointments (
   id uuid default uuid_generate_v4() primary key,
-  client_id uuid references profiles(id) not null,
-  service_id uuid references services(id) not null,
+  client_id uuid references profiles(id) on delete cascade not null,
+  service_id uuid references services(id) on delete cascade not null,
   start_time timestamp with time zone not null,
   end_time timestamp with time zone not null,
   status text check (status in ('pending', 'confirmed', 'completed', 'cancelled')) default 'pending',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+-- Atualiza restrições da tabela appointments caso ela já exista para evitar erros ao deletar dados relacionados
+do $$
+begin
+  alter table appointments drop constraint if exists appointments_client_id_fkey;
+  alter table appointments add constraint appointments_client_id_fkey foreign key (client_id) references profiles(id) on delete cascade;
+  
+  alter table appointments drop constraint if exists appointments_service_id_fkey;
+  alter table appointments add constraint appointments_service_id_fkey foreign key (service_id) references services(id) on delete cascade;
+exception when others then
+  null;
+end
+$$;
 
 -- Habilitar o modo Realtime para atualizações em tempo real 
 do $$
@@ -123,18 +152,34 @@ begin
   if not exists (select from pg_tables where schemaname = 'public' and tablename  = 'transactions') then
     create table transactions (
       id uuid default uuid_generate_v4() primary key,
-      barbershop_id uuid references barbershops(id) not null,
+      barbershop_id uuid references barbershops(id) on delete cascade not null,
       type text check (type in ('income', 'expense', 'fixed_cost', 'variable_cost')) not null,
       amount numeric not null,
       description text not null,
       date date not null default current_date,
-      appointment_id uuid references appointments(id),
+      appointment_id uuid references appointments(id) on delete set null,
       created_at timestamp with time zone default timezone('utc'::text, now()) not null
     );
   else
     if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='transactions' and column_name='barbershop_id') then 
-      alter table transactions add column barbershop_id uuid references barbershops(id); 
+      alter table transactions add column barbershop_id uuid references barbershops(id) on delete cascade; 
+    else
+      -- Ajustar constraints
+      alter table transactions drop constraint if exists transactions_barbershop_id_fkey;
+      begin
+        alter table transactions add constraint transactions_barbershop_id_fkey foreign key (barbershop_id) references barbershops(id) on delete cascade;
+      exception when others then
+        null;
+      end;
     end if;
+    
+    -- Para transactions e appointments, definir como set null
+    begin
+        alter table transactions drop constraint if exists transactions_appointment_id_fkey;
+        alter table transactions add constraint transactions_appointment_id_fkey foreign key (appointment_id) references appointments(id) on delete set null;
+    exception when others then
+        null;
+    end;
   end if;
 end 
 $$;
